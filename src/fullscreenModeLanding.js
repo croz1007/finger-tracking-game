@@ -25,6 +25,7 @@ export const FULLSCREEN_CAMERA_MODE_OPTIONS = [
   { id: "invaders", label: "Invaders", category: "Game" },
   { id: "flappy", label: "Flappy", category: "Game" },
   { id: "missile-command", label: "Missile Command", category: "Game" },
+  { id: "virtual-piano", label: "Virtual Piano", category: "Music" },
 ];
 
 export const FULLSCREEN_CAMERA_LANDING_OPTIONS = [

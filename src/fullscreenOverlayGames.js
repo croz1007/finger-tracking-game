@@ -15,6 +15,7 @@ export function runFullscreenOverlayGameUpdates(
     updateFullscreenFlappySimulation,
     updateFullscreenMissileCommandSimulation,
     updateFullscreenTicTacToeSimulation,
+    updateFullscreenVirtualPianoSimulation,
   } = {},
 ) {
   if (typeof updateFullscreenModeLandingSimulation === "function") {
@@ -71,5 +72,9 @@ export function runFullscreenOverlayGameUpdates(
 
   if (typeof updateFullscreenTicTacToeSimulation === "function") {
     updateFullscreenTicTacToeSimulation(timestamp);
+  }
+
+  if (typeof updateFullscreenVirtualPianoSimulation === "function") {
+    updateFullscreenVirtualPianoSimulation(timestamp);
   }
 }

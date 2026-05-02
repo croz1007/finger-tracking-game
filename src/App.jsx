@@ -225,6 +225,11 @@ import {
   isTwoHandGesture,
 } from "./gestures/constants.js";
 import { createGesturePersonalization } from "./gestures/personalization.js";
+import {
+  createVirtualPianoGame,
+  stepVirtualPianoGame,
+} from "./virtualPianoGame.js";
+import { startPianoNote } from "./virtualPianoAudio.js";
 
 const PHASES = {
   CALIBRATION: "CALIBRATION",
@@ -1504,6 +1509,7 @@ export default function App() {
   const [fullscreenFlappyState, setFullscreenFlappyState] = useState(null);
   const [fullscreenMissileCommandState, setFullscreenMissileCommandState] = useState(null);
   const [fullscreenTicTacToeState, setFullscreenTicTacToeState] = useState(null);
+  const [fullscreenVirtualPianoState, setFullscreenVirtualPianoState] = useState(null);
   const [poseModelReady, setPoseModelReady] = useState(false);
   const [poseModelError, setPoseModelError] = useState("");
   const [poseStatus, setPoseStatus] = useState(createEmptyPoseStatus);
@@ -1653,6 +1659,11 @@ export default function App() {
   const fullscreenTicTacToeStateRef = useRef(null);
   const fullscreenTicTacToeViewportRef = useRef(null);
   const fullscreenTicTacToeLastTickRef = useRef(0);
+  const fullscreenVirtualPianoStateRef = useRef(null);
+  const fullscreenVirtualPianoViewportRef = useRef(null);
+  const fullscreenVirtualPianoLastTickRef = useRef(0);
+  // maps keyId -> stop() function for each currently-sustained note
+  const fullscreenVirtualPianoActiveNotesRef = useRef({});
   const debugRef = useRef(debugEnabled);
   const labConfidenceThresholdRef = useRef(labConfidenceThreshold);
   const labShowSkeletonRef = useRef(labShowSkeleton);
@@ -1794,6 +1805,10 @@ export default function App() {
     isFullscreenCameraPhase &&
     fullscreenGridMode === "tic-tac-toe" &&
     Boolean(fullscreenTicTacToeState);
+  const isFullscreenVirtualPianoMode =
+    isFullscreenCameraPhase &&
+    fullscreenGridMode === "virtual-piano" &&
+    Boolean(fullscreenVirtualPianoState);
   const fullscreenRestartControlLabel = getFullscreenRestartControlLabel(fullscreenGridMode, {
     handBounce: fullscreenHandBounceState,
     brickDodger: fullscreenBrickDodgerState,
@@ -2514,6 +2529,7 @@ export default function App() {
       setFullscreenFlappyState(null);
       setFullscreenMissileCommandState(null);
       setFullscreenTicTacToeState(null);
+      setFullscreenVirtualPianoState(null);
     }
   }, [phase]);
 
@@ -2627,6 +2643,14 @@ export default function App() {
 
   useEffect(() => {
     fullscreenTicTacToeViewportRef.current = fullscreenCameraViewport;
+  }, [fullscreenCameraViewport]);
+
+  useEffect(() => {
+    fullscreenVirtualPianoStateRef.current = fullscreenVirtualPianoState;
+  }, [fullscreenVirtualPianoState]);
+
+  useEffect(() => {
+    fullscreenVirtualPianoViewportRef.current = fullscreenCameraViewport;
   }, [fullscreenCameraViewport]);
 
   useEffect(() => {
@@ -3050,6 +3074,34 @@ export default function App() {
     fullscreenTicTacToeLastTickRef.current = 0;
     fullscreenTicTacToeStateRef.current = nextGame;
     setFullscreenTicTacToeState(nextGame);
+    return undefined;
+  }, [fullscreenCameraViewport, fullscreenGridMode, phase]);
+
+  useEffect(() => {
+    if (
+      phase !== PHASES.FULLSCREEN_CAMERA ||
+      fullscreenGridMode !== "virtual-piano" ||
+      !fullscreenCameraViewport
+    ) {
+      for (const stopFn of Object.values(fullscreenVirtualPianoActiveNotesRef.current)) {
+        stopFn?.();
+      }
+      fullscreenVirtualPianoActiveNotesRef.current = {};
+      fullscreenVirtualPianoLastTickRef.current = 0;
+      if (fullscreenVirtualPianoStateRef.current) {
+        fullscreenVirtualPianoStateRef.current = null;
+        setFullscreenVirtualPianoState(null);
+      }
+      return undefined;
+    }
+
+    const nextGame = createVirtualPianoGame(
+      fullscreenCameraViewport.width,
+      fullscreenCameraViewport.height,
+    );
+    fullscreenVirtualPianoLastTickRef.current = 0;
+    fullscreenVirtualPianoStateRef.current = nextGame;
+    setFullscreenVirtualPianoState(nextGame);
     return undefined;
   }, [fullscreenCameraViewport, fullscreenGridMode, phase]);
 
@@ -7394,7 +7446,8 @@ export default function App() {
       fullscreenGridModeRef.current === "sky-patrol" ||
       fullscreenGridModeRef.current === "invaders" ||
       fullscreenGridModeRef.current === "flappy" ||
-      fullscreenGridModeRef.current === "missile-command"
+      fullscreenGridModeRef.current === "missile-command" ||
+      fullscreenGridModeRef.current === "virtual-piano"
     ) {
       return {
         indexPoints,
@@ -8100,6 +8153,80 @@ export default function App() {
     setFullscreenTicTacToeState(nextState);
   }
 
+  function updateFullscreenVirtualPianoSimulation(timestamp) {
+    if (
+      phaseRef.current !== PHASES.FULLSCREEN_CAMERA ||
+      fullscreenGridModeRef.current !== "virtual-piano" ||
+      !fullscreenVirtualPianoStateRef.current
+    ) {
+      fullscreenVirtualPianoLastTickRef.current = timestamp;
+      return;
+    }
+
+    const viewportMetrics = fullscreenVirtualPianoViewportRef.current;
+    if (!viewportMetrics) {
+      fullscreenVirtualPianoLastTickRef.current = timestamp;
+      return;
+    }
+
+    const previousTimestamp = fullscreenVirtualPianoLastTickRef.current || timestamp;
+    const deltaSeconds = Math.min(0.05, Math.max(0, (timestamp - previousTimestamp) / 1000));
+    fullscreenVirtualPianoLastTickRef.current = timestamp;
+
+    // Project all fingertips from all tracked hands into viewport-local coordinates.
+    // Also project the MCP (base knuckle) for each finger so the game can use
+    // knuckle-relative velocity — filters out whole-hand movement, only individual
+    // finger presses trigger notes.
+    const renderMetrics = computeCameraRenderMetrics("contain");
+    const hands = Array.isArray(fullscreenHandsRef.current) ? fullscreenHandsRef.current : [];
+    const fingerNames = ["thumb", "index", "middle", "ring", "pinky"];
+    // MediaPipe landmark indices for MCP (base knuckle) of each finger
+    const knuckleLandmarkIndex = { thumb: 2, index: 5, middle: 9, ring: 13, pinky: 17 };
+    const fingerTips = hands.flatMap((hand, handIndex) => {
+      const handId = hand?.id ?? hand?.label ?? `hand-${handIndex}`;
+      const landmarks = Array.isArray(hand?.landmarks) ? hand.landmarks : [];
+      return fingerNames.flatMap((fingerName) => {
+        const tip = hand?.fingerTips?.[fingerName] ?? hand?.[`${fingerName}Tip`] ?? null;
+        const projected = projectCameraPointToCanvas(tip, renderMetrics);
+        if (!projected) {
+          return [];
+        }
+        const knuckleLm = landmarks[knuckleLandmarkIndex[fingerName]] ?? null;
+        const projectedKnuckle = projectCameraPointToCanvas(knuckleLm, renderMetrics);
+        const knuckleY = projectedKnuckle ? projectedKnuckle.y - viewportMetrics.top : null;
+        return [{
+          id: `${handId}-${fingerName}`,
+          x: projected.x - viewportMetrics.left,
+          y: projected.y - viewportMetrics.top,
+          knuckleY,
+        }];
+      });
+    });
+
+    const nextState = stepVirtualPianoGame(
+      fullscreenVirtualPianoStateRef.current,
+      fingerTips,
+      deltaSeconds,
+    );
+
+    const activeNotes = fullscreenVirtualPianoActiveNotesRef.current;
+
+    // Start a sustained note for every new press; stop any orphaned note on that key first
+    for (const press of nextState.newPresses) {
+      activeNotes[press.id]?.();
+      activeNotes[press.id] = startPianoNote(press.freq);
+    }
+
+    // Release notes for keys no longer held down
+    for (const keyId of nextState.releasedKeyIds) {
+      activeNotes[keyId]?.();
+      delete activeNotes[keyId];
+    }
+
+    fullscreenVirtualPianoStateRef.current = nextState;
+    setFullscreenVirtualPianoState(nextState);
+  }
+
   function updateFullscreenOverlayGames(timestamp) {
     runFullscreenOverlayGameUpdates(timestamp, {
       updateFullscreenModeLandingSimulation,
@@ -8116,6 +8243,7 @@ export default function App() {
       updateFullscreenFlappySimulation,
       updateFullscreenMissileCommandSimulation,
       updateFullscreenTicTacToeSimulation,
+      updateFullscreenVirtualPianoSimulation,
     });
     updateFullscreenFruitNinjaSimulation(timestamp);
   }
@@ -11188,6 +11316,89 @@ export default function App() {
                 </div>
               ) : null}
             </div>
+          ) : fullscreenGridMode === "virtual-piano" ? (
+            <div
+              className="fullscreen-camera-virtual-piano"
+              style={fullscreenCameraViewport?.style ?? undefined}
+            >
+              <div className="fullscreen-camera-piano-keys-stage">
+                <div className="fullscreen-camera-piano-keys-inner">
+                  {fullscreenVirtualPianoState?.keys
+                    ?.filter((key) => key.isWhite)
+                    .map((key) => (
+                      <div
+                        key={key.id}
+                        className={`fullscreen-camera-piano-white-key${key.pressed ? " pressed" : ""}`}
+                        style={{
+                          left: `${key.x}px`,
+                          top: `${key.y}px`,
+                          width: `${key.width}px`,
+                          height: `${key.height}px`,
+                        }}
+                      >
+                        {key.label ? (
+                          <span className="fullscreen-camera-piano-key-label">{key.label}</span>
+                        ) : null}
+                      </div>
+                    ))}
+                  {fullscreenVirtualPianoState?.keys
+                    ?.filter((key) => !key.isWhite)
+                    .map((key) => (
+                      <div
+                        key={key.id}
+                        className={`fullscreen-camera-piano-black-key${key.pressed ? " pressed" : ""}`}
+                        style={{
+                          left: `${key.x}px`,
+                          top: `${key.y}px`,
+                          width: `${key.width}px`,
+                          height: `${key.height}px`,
+                        }}
+                      >
+                        {key.label ? (
+                          <span className="fullscreen-camera-piano-key-label">{key.label}</span>
+                        ) : null}
+                      </div>
+                    ))}
+                </div>
+              </div>
+              {isFullscreenVirtualPianoMode
+                ? fullscreenTipPoints
+                    .filter((pt) => Number.isFinite(pt.x) && Number.isFinite(pt.y))
+                    .map((pt) => {
+                      const vx = pt.x - (fullscreenCameraViewport?.left ?? 0);
+                      const vy = pt.y - (fullscreenCameraViewport?.top ?? 0);
+                      const isOnKey = fullscreenVirtualPianoState?.keys?.some(
+                        (k) =>
+                          k.pressed &&
+                          vx >= k.x &&
+                          vx <= k.x + k.width &&
+                          vy >= k.y &&
+                          vy <= k.y + k.height,
+                      );
+                      return (
+                        <div
+                          key={pt.id}
+                          className="fullscreen-camera-piano-finger-dot"
+                          style={{
+                            left: `${vx}px`,
+                            top: `${vy}px`,
+                            width: "22px",
+                            height: "22px",
+                            background: isOnKey
+                              ? "rgba(100, 180, 255, 0.9)"
+                              : "rgba(255, 255, 255, 0.55)",
+                            boxShadow: isOnKey
+                              ? "0 0 12px rgba(100, 180, 255, 0.7)"
+                              : "0 0 6px rgba(255, 255, 255, 0.4)",
+                          }}
+                        />
+                      );
+                    })
+                : null}
+              <div className="fullscreen-camera-piano-hint">
+                Lower your fingertips onto the keys to play
+              </div>
+            </div>
           ) : (
             <div className="fullscreen-camera-grid" style={fullscreenCameraGridMetrics?.style ?? undefined}>
               {fullscreenCameraGridMetrics?.outerRing?.map((cell) => (
@@ -11313,6 +11524,8 @@ export default function App() {
                       ? `Index fingertip aims. Pinch launches interceptors from the nearest surviving base, blasts stop threats in an area, and the pace ramps over time after the ${MISSILE_COMMAND_COUNTDOWN_MS / 1000}-second opening countdown.`
                       : fullscreenGridMode === "flappy"
                       ? "Flappy overlay uses pinch rising edges only. Each distinct pinch flaps once, holding a pinch does not retrigger, and pinching after a crash restarts the round."
+                      : fullscreenGridMode === "virtual-piano"
+                      ? "Virtual Piano renders a two-octave keyboard (C3–C5) across the bottom of the frame. Lower any fingertip into a key to play it — up to 10 simultaneous notes across both hands. Black keys take priority where they overlap white keys."
                       : "Camera fits the window without cropping. Press `Esc` to close."}
                   </span>
                 ) : null}
