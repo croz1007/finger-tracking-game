@@ -115,9 +115,7 @@ body {
 .content-grid.resizable-layout {
   column-gap: 0;
   grid-template-columns:
-    var(--left-pane-column, minmax(280px, 42vw))
-    var(--left-pane-resizer-width, 18px)
-    minmax(280px, 1fr);
+    var(--left-pane-column, minmax(280px, 42vw)) var(--left-pane-resizer-width, 18px) minmax(280px, 1fr);
 }
 
 .content-grid.calibration-layout {
@@ -127,9 +125,7 @@ body {
 
 .content-grid.calibration-layout.resizable-layout {
   grid-template-columns:
-    var(--left-pane-column, minmax(220px, 1fr))
-    var(--left-pane-resizer-width, 18px)
-    minmax(0, 5fr);
+    var(--left-pane-column, minmax(220px, 1fr)) var(--left-pane-resizer-width, 18px) minmax(0, 5fr);
 }
 
 .content-grid.body-layout {
@@ -338,14 +334,12 @@ body {
 
 .fullscreen-camera-hex-cell {
   background: transparent;
-  clip-path: polygon(
-    50% 0%,
-    93% 25%,
-    93% 75%,
-    50% 100%,
-    7% 75%,
-    7% 25%
-  );
+  clip-path: polygon(50% 0%,
+      93% 25%,
+      93% 75%,
+      50% 100%,
+      7% 75%,
+      7% 25%);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.62);
   position: absolute;
 }
@@ -422,22 +416,18 @@ body {
 .fullscreen-camera-tic-tac-toe-board {
   background:
     linear-gradient(180deg, rgba(10, 22, 35, 0.82), rgba(6, 11, 20, 0.92)),
-    linear-gradient(
-      90deg,
+    linear-gradient(90deg,
       transparent 0 calc(33.333% - 2px),
       rgba(215, 234, 255, 0.18) calc(33.333% - 2px) calc(33.333% + 2px),
       transparent calc(33.333% + 2px) calc(66.666% - 2px),
       rgba(215, 234, 255, 0.18) calc(66.666% - 2px) calc(66.666% + 2px),
-      transparent calc(66.666% + 2px)
-    ),
-    linear-gradient(
-      180deg,
+      transparent calc(66.666% + 2px)),
+    linear-gradient(180deg,
       transparent 0 calc(33.333% - 2px),
       rgba(215, 234, 255, 0.18) calc(33.333% - 2px) calc(33.333% + 2px),
       transparent calc(33.333% + 2px) calc(66.666% - 2px),
       rgba(215, 234, 255, 0.18) calc(66.666% - 2px) calc(66.666% + 2px),
-      transparent calc(66.666% + 2px)
-    );
+      transparent calc(66.666% + 2px));
   border: 3px solid rgba(227, 239, 255, 0.22);
   border-radius: var(--tic-tac-toe-board-radius);
   box-shadow:
@@ -819,11 +809,9 @@ body {
 
 .fullscreen-camera-tic-tac-toe-reset-progress {
   background:
-    conic-gradient(
-      from -90deg,
+    conic-gradient(from -90deg,
       rgba(139, 232, 255, 0.92) var(--tic-tac-toe-reset-progress),
-      rgba(139, 232, 255, 0.12) 0
-    );
+      rgba(139, 232, 255, 0.12) 0);
   border-radius: 50%;
   height: 30px;
   margin-bottom: 10px;
@@ -978,6 +966,7 @@ body {
 }
 
 @keyframes tic-tac-toe-rail-pulse {
+
   0%,
   100% {
     box-shadow:
@@ -1597,13 +1586,11 @@ body {
 
 .fullscreen-camera-wfc-cell.unresolved {
   background:
-    repeating-linear-gradient(
-      135deg,
+    repeating-linear-gradient(135deg,
       rgba(226, 240, 255, 0.12) 0,
       rgba(226, 240, 255, 0.12) 7px,
       rgba(226, 240, 255, 0.04) 7px,
-      rgba(226, 240, 255, 0.04) 14px
-    ),
+      rgba(226, 240, 255, 0.04) 14px),
     rgba(10, 17, 27, 0.58);
   color: rgba(235, 244, 255, 0.5);
 }
@@ -1705,6 +1692,7 @@ body {
   0% {
     transform: scale(0.88);
   }
+
   100% {
     transform: scale(1);
   }
@@ -1733,13 +1721,11 @@ body {
   background:
     radial-gradient(circle at 18% 16%, rgba(255, 255, 255, 0.18), transparent 18%),
     radial-gradient(circle at 76% 14%, rgba(255, 255, 255, 0.16), transparent 14%),
-    repeating-linear-gradient(
-      180deg,
+    repeating-linear-gradient(180deg,
       rgba(255, 255, 255, 0.03) 0,
       rgba(255, 255, 255, 0.03) 2px,
       transparent 2px,
-      transparent 9px
-    );
+      transparent 9px);
   opacity: 0.48;
 }
 
@@ -1810,115 +1796,97 @@ body {
 .fullscreen-camera-sky-patrol-terrain-segment.deep-water {
   background:
     linear-gradient(180deg, rgba(142, 224, 255, 0.18), rgba(6, 66, 104, 0.12)),
-    repeating-linear-gradient(
-      90deg,
+    repeating-linear-gradient(90deg,
       #0d5175 0,
       #0d5175 calc(var(--sky-patrol-tile, 20px) * 0.34),
       #0a4060 calc(var(--sky-patrol-tile, 20px) * 0.34),
       #0a4060 calc(var(--sky-patrol-tile, 20px) * 0.68),
       #0b486b calc(var(--sky-patrol-tile, 20px) * 0.68),
-      #0b486b var(--sky-patrol-tile, 20px)
-    );
+      #0b486b var(--sky-patrol-tile, 20px));
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .fullscreen-camera-sky-patrol-terrain-segment.shallow-water {
   background:
     linear-gradient(180deg, rgba(201, 249, 255, 0.16), rgba(31, 112, 141, 0.08)),
-    repeating-linear-gradient(
-      90deg,
+    repeating-linear-gradient(90deg,
       #12708f 0,
       #12708f calc(var(--sky-patrol-tile, 20px) * 0.3),
       #1590aa calc(var(--sky-patrol-tile, 20px) * 0.3),
       #1590aa calc(var(--sky-patrol-tile, 20px) * 0.62),
       #10798d calc(var(--sky-patrol-tile, 20px) * 0.62),
-      #10798d var(--sky-patrol-tile, 20px)
-    );
+      #10798d var(--sky-patrol-tile, 20px));
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .fullscreen-camera-sky-patrol-terrain-segment.beach {
   background:
     linear-gradient(180deg, rgba(255, 248, 205, 0.2), rgba(255, 221, 149, 0.08)),
-    repeating-linear-gradient(
-      90deg,
+    repeating-linear-gradient(90deg,
       #e4c27b 0,
       #e4c27b calc(var(--sky-patrol-tile, 20px) * 0.32),
       #d6ad63 calc(var(--sky-patrol-tile, 20px) * 0.32),
       #d6ad63 calc(var(--sky-patrol-tile, 20px) * 0.7),
       #edcf8f calc(var(--sky-patrol-tile, 20px) * 0.7),
-      #edcf8f var(--sky-patrol-tile, 20px)
-    );
+      #edcf8f var(--sky-patrol-tile, 20px));
 }
 
 .fullscreen-camera-sky-patrol-terrain-segment.grass {
   background:
     linear-gradient(180deg, rgba(223, 255, 210, 0.18), rgba(69, 115, 58, 0.08)),
-    repeating-linear-gradient(
-      90deg,
+    repeating-linear-gradient(90deg,
       #4a8b4c 0,
       #4a8b4c calc(var(--sky-patrol-tile, 20px) * 0.34),
       #3f7c43 calc(var(--sky-patrol-tile, 20px) * 0.34),
       #3f7c43 calc(var(--sky-patrol-tile, 20px) * 0.68),
       #589c59 calc(var(--sky-patrol-tile, 20px) * 0.68),
-      #589c59 var(--sky-patrol-tile, 20px)
-    );
+      #589c59 var(--sky-patrol-tile, 20px));
 }
 
 .fullscreen-camera-sky-patrol-terrain-segment.forest {
   background:
     linear-gradient(180deg, rgba(214, 255, 211, 0.12), rgba(29, 63, 29, 0.08)),
-    repeating-linear-gradient(
-      90deg,
+    repeating-linear-gradient(90deg,
       #1f4f2d 0,
       #1f4f2d calc(var(--sky-patrol-tile, 20px) * 0.28),
       #2e6338 calc(var(--sky-patrol-tile, 20px) * 0.28),
       #2e6338 calc(var(--sky-patrol-tile, 20px) * 0.56),
       #274f30 calc(var(--sky-patrol-tile, 20px) * 0.56),
-      #274f30 var(--sky-patrol-tile, 20px)
-    );
+      #274f30 var(--sky-patrol-tile, 20px));
 }
 
 .fullscreen-camera-sky-patrol-terrain-segment.runway {
   background:
-    linear-gradient(
-      90deg,
+    linear-gradient(90deg,
       rgba(0, 0, 0, 0) 0,
       rgba(0, 0, 0, 0) 42%,
       rgba(244, 242, 230, 0.92) 42%,
       rgba(244, 242, 230, 0.92) 58%,
       rgba(0, 0, 0, 0) 58%,
-      rgba(0, 0, 0, 0) 100%
-    ),
-    repeating-linear-gradient(
-      90deg,
+      rgba(0, 0, 0, 0) 100%),
+    repeating-linear-gradient(90deg,
       #4f5367 0,
       #4f5367 calc(var(--sky-patrol-tile, 20px) * 0.5),
       #5f667d calc(var(--sky-patrol-tile, 20px) * 0.5),
-      #5f667d var(--sky-patrol-tile, 20px)
-    );
+      #5f667d var(--sky-patrol-tile, 20px));
   border-bottom: 1px solid rgba(21, 26, 32, 0.44);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .fullscreen-camera-sky-patrol-terrain-segment.road {
   background:
-    linear-gradient(
-      90deg,
+    linear-gradient(90deg,
       rgba(0, 0, 0, 0) 0,
       rgba(0, 0, 0, 0) 45%,
       rgba(240, 214, 105, 0.82) 45%,
       rgba(240, 214, 105, 0.82) 55%,
       rgba(0, 0, 0, 0) 55%,
-      rgba(0, 0, 0, 0) 100%
-    ),
-    repeating-linear-gradient(
-      90deg,
+      rgba(0, 0, 0, 0) 100%),
+    repeating-linear-gradient(90deg,
       #655845 0,
       #655845 calc(var(--sky-patrol-tile, 20px) * 0.52),
       #766650 calc(var(--sky-patrol-tile, 20px) * 0.52),
-      #766650 var(--sky-patrol-tile, 20px)
-    );
+      #766650 var(--sky-patrol-tile, 20px));
 }
 
 .fullscreen-camera-sky-patrol-player,
@@ -2049,10 +2017,8 @@ body {
 }
 
 .fullscreen-camera-sky-patrol-fire-ring {
-  background: conic-gradient(
-    rgba(255, 248, 201, 0.92) calc(var(--sky-patrol-fire-progress, 1) * 1turn),
-    rgba(255, 248, 201, 0.14) 0
-  );
+  background: conic-gradient(rgba(255, 248, 201, 0.92) calc(var(--sky-patrol-fire-progress, 1) * 1turn),
+      rgba(255, 248, 201, 0.14) 0);
   border-radius: 50%;
   height: 16px;
   mask: radial-gradient(circle, transparent 48%, #000 52%);
@@ -2455,13 +2421,11 @@ body {
 
 .fullscreen-camera-missile-command.retro-defense::before {
   background:
-    repeating-linear-gradient(
-      180deg,
+    repeating-linear-gradient(180deg,
       rgba(255, 255, 255, 0.045) 0,
       rgba(255, 255, 255, 0.045) 1px,
       transparent 1px,
-      transparent 5px
-    ),
+      transparent 5px),
     radial-gradient(circle at 78% 24%, transparent 0 18%, rgba(95, 255, 208, 0.08) 18.4%, transparent 19.2% 100%);
   content: "";
   inset: 0;
@@ -2752,10 +2716,8 @@ body {
 }
 
 .fullscreen-camera-missile-cooldown-ring {
-  background: conic-gradient(
-    rgba(255, 248, 201, 0.92) calc(var(--missile-cooldown-progress, 1) * 1turn),
-    rgba(255, 248, 201, 0.12) 0
-  );
+  background: conic-gradient(rgba(255, 248, 201, 0.92) calc(var(--missile-cooldown-progress, 1) * 1turn),
+      rgba(255, 248, 201, 0.12) 0);
   border-radius: 50%;
   inset: -9px;
   mask: radial-gradient(circle, transparent 58%, #000 60%);
@@ -3586,8 +3548,8 @@ body {
   opacity: 1;
 }
 
-.fullscreen-camera-mode-landing-box > *,
-.fullscreen-camera-landing-back > * {
+.fullscreen-camera-mode-landing-box>*,
+.fullscreen-camera-landing-back>* {
   position: relative;
   z-index: 2;
 }
@@ -4179,8 +4141,8 @@ body {
   justify-content: center;
 }
 
-.calibration-panel > h2,
-.calibration-panel > .small-text {
+.calibration-panel>h2,
+.calibration-panel>.small-text {
   text-align: center;
   width: 100%;
 }
@@ -4254,8 +4216,8 @@ body {
   justify-content: center;
 }
 
-.sandbox-panel > h2,
-.sandbox-panel > .small-text {
+.sandbox-panel>h2,
+.sandbox-panel>.small-text {
   text-align: center;
   width: 100%;
 }
@@ -5870,10 +5832,12 @@ button:disabled {
     opacity: 0.65;
     transform: translate(-50%, -50%) scale(0.9);
   }
+
   70% {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1.05);
   }
+
   100% {
     opacity: 0.65;
     transform: translate(-50%, -50%) scale(0.9);
@@ -6608,7 +6572,7 @@ button:disabled {
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
 }
 
-.offaxis-status-grid > div {
+.offaxis-status-grid>div {
   background: rgba(6, 15, 18, 0.78);
   border: 1px solid rgba(124, 192, 170, 0.24);
   border-radius: 12px;
@@ -6660,12 +6624,7 @@ button:disabled {
   overflow: hidden;
   position: relative;
   transform:
-    perspective(1100px)
-    translate3d(var(--offaxis-shift-x), var(--offaxis-shift-y), 0)
-    rotateX(var(--offaxis-rotate-x))
-    rotateY(var(--offaxis-rotate-y))
-    skewX(var(--offaxis-skew-x))
-    skewY(var(--offaxis-skew-y));
+    perspective(1100px) translate3d(var(--offaxis-shift-x), var(--offaxis-shift-y), 0) rotateX(var(--offaxis-rotate-x)) rotateY(var(--offaxis-rotate-y)) skewX(var(--offaxis-skew-x)) skewY(var(--offaxis-skew-y));
   transform-style: preserve-3d;
   transition: transform 110ms ease-out, filter 140ms ease-out;
 }
@@ -6738,11 +6697,29 @@ button:disabled {
   width: 230%;
 }
 
-.offaxis-forest-mid-trees .tree-a { left: 6%; }
-.offaxis-forest-mid-trees .tree-b { left: 22%; --tree-height: 56%; }
-.offaxis-forest-mid-trees .tree-c { left: 44%; --tree-height: 60%; }
-.offaxis-forest-mid-trees .tree-d { left: 69%; --tree-height: 58%; }
-.offaxis-forest-mid-trees .tree-e { left: 86%; --tree-height: 54%; }
+.offaxis-forest-mid-trees .tree-a {
+  left: 6%;
+}
+
+.offaxis-forest-mid-trees .tree-b {
+  left: 22%;
+  --tree-height: 56%;
+}
+
+.offaxis-forest-mid-trees .tree-c {
+  left: 44%;
+  --tree-height: 60%;
+}
+
+.offaxis-forest-mid-trees .tree-d {
+  left: 69%;
+  --tree-height: 58%;
+}
+
+.offaxis-forest-mid-trees .tree-e {
+  left: 86%;
+  --tree-height: 54%;
+}
 
 .offaxis-forest-path {
   background:
@@ -6849,12 +6826,15 @@ button:disabled {
     opacity: 0;
     transform: translate3d(0, 10px, 0) scale(0.7);
   }
+
   20% {
     opacity: 0.82;
   }
+
   80% {
     opacity: 0.4;
   }
+
   100% {
     opacity: 0;
     transform: translate3d(16px, -22px, 0) scale(1.28);
