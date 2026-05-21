@@ -102,7 +102,7 @@ test("getTicTacToeHudUi groups score and status while hiding the legend after pl
   const openingHud = getTicTacToeHudUi(
     {
       status: "player-turn",
-      message: "Pinch an X on the left rail and drag it into an open square",
+      message: "Pinch an X on the X Rail and drag it into an open square",
       draggingPiece: null,
     },
     {
@@ -114,7 +114,7 @@ test("getTicTacToeHudUi groups score and status while hiding the legend after pl
   );
 
   assert.deepEqual(openingHud.scoreItems, ["You 2", "O 1", "Draws 3", "Board 0/9"]);
-  assert.equal(openingHud.statusMessage, "Pinch an X on the left rail and drag it into an open square");
+  assert.equal(openingHud.statusMessage, "Pinch an X on the X Rail and drag it into an open square");
   assert.equal(openingHud.statusTone, "player-turn");
   assert.equal(openingHud.showLegend, true);
 

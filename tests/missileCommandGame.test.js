@@ -29,6 +29,12 @@ test("createMissileCommandLayout reserves HUD-safe vertical play space", () => {
   assert.ok(layout.playBottomY <= layout.groundY);
 });
 
+test("createMissileCommandLayout makes defensive missiles 50 percent faster", () => {
+  const layout = createMissileCommandLayout(960, 720);
+
+  assert.ok(Math.abs(layout.interceptorSpeed - 885.6) < 0.001);
+});
+
 test("launchMissileCommandInterceptor adds a shot during active play", () => {
   const initial = createMissileCommandGame(960, 720);
   const playing = {
@@ -42,6 +48,10 @@ test("launchMissileCommandInterceptor adds a shot during active play", () => {
   assert.ok(next.cooldownMs > 0);
   assert.equal(next.interceptors[0].targetX, 420);
   assert.equal(next.interceptors[0].targetY, 180);
+  assert.ok(
+    Math.abs(Math.hypot(next.interceptors[0].vx, next.interceptors[0].vy) - next.layout.interceptorSpeed) <
+      0.001,
+  );
 });
 
 test("launchMissileCommandInterceptor clamps launch targets to the playfield", () => {

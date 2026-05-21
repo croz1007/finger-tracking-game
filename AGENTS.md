@@ -16,10 +16,14 @@
 4. Preserve existing camera/tracking modes unless the issue explicitly changes them.
 5. Add or update focused automated tests when behavior changes are testable in this repo.
 
-**Validation baseline**
+**Validation guidance**
 
-- `npm run build`
-- `npm test`
+Use best judgment and discretion when deciding how much validation to run after a change.
+Match the test scope to the risk and blast radius:
+
+- For broad changes, shared wiring, gameplay behavior, camera/tracking behavior, or anything likely to affect multiple modes, run the full baseline: `npm run build` and `npm test`.
+- For focused or low-risk changes, prefer targeted tests, a build, lint/static checks, or no automated validation when that is the honest best fit.
+- In the final handoff, state what validation was run and call out any meaningful validation that was intentionally skipped.
 
 If a change touches camera-tracking or gameplay wiring that is hard to prove in the current automated suite, record the remaining manual-validation gap in the workpad instead of pretending it is covered.
 

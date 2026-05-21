@@ -5,6 +5,7 @@ import {
   BREAKOUT_CAPSULE_SCORE,
   assignBreakoutCapsuleDrops,
   createBreakoutGame,
+  createFindYourGrindBreakoutGame,
   createBreakoutLayout,
   stepBreakoutGame,
 } from "../src/breakoutGame.js";
@@ -28,6 +29,24 @@ test("createBreakoutGame starts with a stuck ball and countdown", () => {
   assert.equal(game.countdownMs, 3_000);
   assert.equal(game.balls.length, 1);
   assert.equal(game.balls[0].stuckToPaddle, true);
+});
+
+test("createFindYourGrindBreakoutGame builds the logo from many small colored bricks", () => {
+  const game = createFindYourGrindBreakoutGame(960, 720, constantRng(0.2));
+  const classic = createBreakoutGame(960, 720, constantRng(0.2));
+  const colors = new Set(game.bricks.map((brick) => brick.color));
+  const capsuleCount = game.bricks.filter((brick) => brick.dropsCapsule).length;
+
+  assert.equal(game.status, "countdown");
+  assert.equal(game.message, "3");
+  assert.ok(game.bricks.length > classic.bricks.length * 5);
+  assert.ok(game.bricks.every((brick) => brick.width < classic.layout.brickWidth / 4));
+  assert.ok(game.bricks.every((brick) => brick.height < classic.layout.brickHeight));
+  assert.ok(colors.has("#2a5eff"));
+  assert.ok(colors.has("#ff011f"));
+  assert.ok(colors.has("#ff931a"));
+  assert.ok(capsuleCount > 0);
+  assert.ok(capsuleCount < game.bricks.length / 10);
 });
 
 test("stepBreakoutGame launches the opening ball after the countdown", () => {

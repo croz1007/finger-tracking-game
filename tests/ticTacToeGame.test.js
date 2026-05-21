@@ -59,17 +59,17 @@ function dropOnCell(game, cellIndex) {
 
 test("createTicTacToeGame starts on the player's drag turn", () => {
   const game = createTicTacToeGame(1280, 720);
-  const leftMargin = game.layout.gameLeft;
-  const rightMargin = game.layout.width - (game.layout.gameLeft + game.layout.gameWidth);
-  const aiRailRightEdge = game.layout.aiRailCenterX + game.layout.railWidth / 2;
 
   assert.equal(game.status, "player-turn");
-  assert.equal(game.message, "Pinch an X on the left rail and drag it into an open square");
+  assert.equal(game.message, "Pinch an X on the X Rail and drag it into an open square");
   assert.deepEqual(game.board, Array(9).fill(null));
   assert.ok(game.layout.boardSize > 0);
-  assert.ok(game.layout.resetBoxLeft > aiRailRightEdge);
+  assert.ok(game.layout.resetBoxLeft < game.layout.aiRailLeft);
+  assert.ok(game.layout.aiRailLeft < game.layout.boardLeft);
+  assert.ok(game.layout.boardLeft < game.layout.playerRailLeft);
+  assert.ok(game.layout.resetBoxLeft >= 0);
+  assert.ok(game.layout.playerRailLeft + game.layout.playerRailWidth <= game.layout.width);
   assert.ok(game.layout.activePieceSize >= 60);
-  assert.ok(Math.abs(leftMargin - rightMargin) < 1);
 });
 
 test("createTicTacToeGame keeps the player rail reachable on narrow fullscreen viewports", () => {
@@ -125,7 +125,7 @@ test("createTicTacToeGame stacks rails above and below the board on portrait vie
   assert.ok(pickedUp.draggingPiece);
 });
 
-test("stepTicTacToeGame lets the player drag a piece from the left rail into the board", () => {
+test("stepTicTacToeGame lets the player drag a piece from the X Rail into the board", () => {
   const game = createTicTacToeGame(1280, 720);
   const pickedUp = startDrag(game);
 
@@ -154,7 +154,7 @@ test("stepTicTacToeGame rejects drops on occupied cells", () => {
   assert.equal(rejected.board[0], TIC_TAC_TOE_AI_MARK);
   assert.equal(rejected.draggingPiece, null);
   assert.equal(rejected.status, "player-turn");
-  assert.equal(rejected.message, "Open squares only. Grab another X from the rail");
+  assert.equal(rejected.message, "Open squares only. Grab another X from the X Rail");
 });
 
 test("stepTicTacToeGame cancels a drag instead of placing when tracking drops out", () => {
@@ -173,7 +173,7 @@ test("stepTicTacToeGame cancels a drag instead of placing when tracking drops ou
   assert.equal(droppedByTrackingLoss.previewCellIndex, -1);
   assert.equal(
     droppedByTrackingLoss.message,
-    "Pinch an X on the left rail and drag it into an open square",
+    "Pinch an X on the X Rail and drag it into an open square",
   );
 });
 
@@ -261,7 +261,7 @@ test("stepTicTacToeGame resolves the AI move after its think delay", () => {
 
   assert.equal(resolved.board[2], TIC_TAC_TOE_AI_MARK);
   assert.equal(resolved.status, "player-turn");
-  assert.equal(resolved.message, "Pinch an X on the left rail and drag it into an open square");
+  assert.equal(resolved.message, "Pinch an X on the X Rail and drag it into an open square");
 });
 
 test("stepTicTacToeGame uses a random open square for the AI's first move", () => {

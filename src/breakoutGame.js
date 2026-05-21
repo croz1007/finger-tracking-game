@@ -6,6 +6,12 @@ export const BREAKOUT_COUNTDOWN_MS = 3_000;
 export const BREAKOUT_BRICK_SCORE = 100;
 export const BREAKOUT_CAPSULE_SCORE = 200;
 export const BREAKOUT_BRICK_COLORS = ["#ff0000", "#ff8d00", "#ffdb00", "#00d619", "#009fff"];
+export const FIND_YOUR_GRIND_BREAKOUT_MODE_ID = "find-your-grind-breakout";
+export const FIND_YOUR_GRIND_LOGO_COLORS = {
+  blue: "#2a5eff",
+  red: "#ff011f",
+  orange: "#ff931a",
+};
 
 const BREAKOUT_BRICK_ROWS = 5;
 const BREAKOUT_BRICK_COLUMNS = 10;
@@ -14,6 +20,22 @@ const BREAKOUT_PADDLE_LERP_PER_SECOND = 14;
 const BREAKOUT_LAUNCH_SPEED_RATIO = 0.42;
 const BREAKOUT_EXTRA_BALL_SPEED_RATIO = 0.45;
 const BREAKOUT_CAPSULE_SPEED_RATIO = 0.22;
+const FIND_YOUR_GRIND_LOGO_ASPECT_RATIO = 576 / 398;
+const FIND_YOUR_GRIND_LETTER_GAP_COLUMNS = 1;
+
+const FIND_YOUR_GRIND_GLYPHS = {
+  D: ["11110", "10001", "10001", "10001", "10001", "10001", "11110"],
+  F: ["11111", "10000", "10000", "11110", "10000", "10000", "10000"],
+  G: ["01111", "10000", "10000", "10011", "10001", "10001", "01110"],
+  I: ["111", "010", "010", "010", "010", "010", "111"],
+  N: ["10001", "11001", "10101", "10011", "10001", "10001", "10001"],
+  O: ["01110", "10001", "10001", "10001", "10001", "10001", "01110"],
+  R: ["11110", "10001", "10001", "11110", "10100", "10010", "10001"],
+  U: ["10001", "10001", "10001", "10001", "10001", "10001", "01110"],
+  Y: ["10001", "10001", "01010", "00100", "00100", "00100", "00100"],
+};
+
+const FIND_YOUR_GRIND_HOUSE_MARK = ["00100", "01110", "11111", "11111"];
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -59,13 +81,16 @@ export function createBreakoutLayout(width, height) {
   };
 }
 
-export function assignBreakoutCapsuleDrops(bricks, rng = Math.random) {
+export function assignBreakoutCapsuleDrops(bricks, rng = Math.random, desiredCount = null) {
   const safeBricks = Array.isArray(bricks) ? bricks : [];
   if (safeBricks.length === 0) {
     return [];
   }
 
-  const desiredCount = Math.max(1, Math.floor(safeBricks.length / 5));
+  const targetCount = Number.isFinite(desiredCount)
+    ? Math.round(desiredCount)
+    : Math.max(1, Math.floor(safeBricks.length / 5));
+  const selectedCount = clamp(targetCount, 0, safeBricks.length);
   const shuffledIndexes = safeBricks.map((_, index) => index);
   for (let index = shuffledIndexes.length - 1; index > 0; index -= 1) {
     const swapIndex = Math.floor(rng() * (index + 1));
@@ -75,7 +100,7 @@ export function assignBreakoutCapsuleDrops(bricks, rng = Math.random) {
     ];
   }
 
-  const selected = new Set(shuffledIndexes.slice(0, desiredCount));
+  const selected = new Set(shuffledIndexes.slice(0, selectedCount));
   return safeBricks.map((brick, index) => ({
     ...brick,
     dropsCapsule: selected.has(index),
@@ -104,6 +129,203 @@ export function createBreakoutBricks(layout, rng = Math.random) {
     }
   }
   return assignBreakoutCapsuleDrops(baseBricks, rng);
+}
+
+function getBitmapColumnCount(bitmap) {
+  return bitmap.reduce((width, row) => Math.max(width, row.length), 0);
+}
+
+function getColumnSpanWidth(columnCount, cellSize, cellGap) {
+  if (columnCount <= 0) {
+    return 0;
+  }
+  return columnCount * cellSize + (columnCount - 1) * cellGap;
+}
+
+function getWordColumnCount(word) {
+  return Array.from(word).reduce((columnCount, letter, index) => {
+    const glyph = FIND_YOUR_GRIND_GLYPHS[letter];
+    if (!glyph) {
+      return columnCount;
+    }
+    return (
+      columnCount +
+      getBitmapColumnCount(glyph) +
+      (index < word.length - 1 ? FIND_YOUR_GRIND_LETTER_GAP_COLUMNS : 0)
+    );
+  }, 0);
+}
+
+function addLogoBrick(bricks, createBrickId, { x, y, width, height, color, role }) {
+  bricks.push({
+    id: `find-your-grind-${createBrickId()}`,
+    row: null,
+    column: null,
+    x,
+    y,
+    width,
+    height,
+    color,
+    role,
+    destroyed: false,
+    dropsCapsule: false,
+  });
+}
+
+function addBitmapBricks(bricks, createBrickId, { bitmap, left, top, cellSize, cellGap, color, role }) {
+  const pitch = cellSize + cellGap;
+  bitmap.forEach((row, rowIndex) => {
+    Array.from(row).forEach((pixel, columnIndex) => {
+      if (pixel !== "1") {
+        return;
+      }
+      addLogoBrick(bricks, createBrickId, {
+        x: left + columnIndex * pitch,
+        y: top + rowIndex * pitch,
+        width: cellSize,
+        height: cellSize,
+        color,
+        role,
+      });
+    });
+  });
+}
+
+function addWordBricks(bricks, createBrickId, { word, left, top, cellSize, cellGap, color }) {
+  const pitch = cellSize + cellGap;
+  let columnOffset = 0;
+  for (const letter of word) {
+    const glyph = FIND_YOUR_GRIND_GLYPHS[letter];
+    if (!glyph) {
+      continue;
+    }
+    addBitmapBricks(bricks, createBrickId, {
+      bitmap: glyph,
+      left: left + columnOffset * pitch,
+      top,
+      cellSize,
+      cellGap,
+      color,
+      role: "letter",
+    });
+    columnOffset += getBitmapColumnCount(glyph) + FIND_YOUR_GRIND_LETTER_GAP_COLUMNS;
+  }
+}
+
+function addLogoBorderBricks(bricks, createBrickId, { left, top, width, height, cellSize, cellGap }) {
+  const pitch = cellSize + cellGap;
+  const right = left + width - cellSize;
+  const bottom = top + height - cellSize;
+
+  for (let x = left; x <= right + 0.5; x += pitch) {
+    addLogoBrick(bricks, createBrickId, {
+      x,
+      y: top,
+      width: cellSize,
+      height: cellSize,
+      color: FIND_YOUR_GRIND_LOGO_COLORS.blue,
+      role: "border",
+    });
+    addLogoBrick(bricks, createBrickId, {
+      x,
+      y: bottom,
+      width: cellSize,
+      height: cellSize,
+      color: FIND_YOUR_GRIND_LOGO_COLORS.blue,
+      role: "border",
+    });
+  }
+
+  for (let y = top + pitch; y <= bottom - pitch + 0.5; y += pitch) {
+    addLogoBrick(bricks, createBrickId, {
+      x: left,
+      y,
+      width: cellSize,
+      height: cellSize,
+      color: FIND_YOUR_GRIND_LOGO_COLORS.blue,
+      role: "border",
+    });
+    addLogoBrick(bricks, createBrickId, {
+      x: right,
+      y,
+      width: cellSize,
+      height: cellSize,
+      color: FIND_YOUR_GRIND_LOGO_COLORS.blue,
+      role: "border",
+    });
+  }
+}
+
+export function createFindYourGrindBreakoutBricks(layout, rng = Math.random) {
+  const frameTop = clamp(layout.height * 0.16, 96, 128);
+  const maxFrameHeight = Math.max(120, layout.paddleY - frameTop - layout.ballRadius * 8);
+  const frameHeight = Math.min(
+    layout.height * 0.54,
+    maxFrameHeight,
+    (layout.width * 0.84) / FIND_YOUR_GRIND_LOGO_ASPECT_RATIO,
+  );
+  const frameWidth = frameHeight * FIND_YOUR_GRIND_LOGO_ASPECT_RATIO;
+  const frameLeft = (layout.width - frameWidth) / 2;
+  const cellSize = Math.floor(clamp(Math.min(frameWidth / 44, frameHeight / 31), 7, 15));
+  const cellGap = Math.max(1, Math.round(cellSize * 0.14));
+  const pitch = cellSize + cellGap;
+  const lineHeight = getColumnSpanWidth(7, cellSize, cellGap);
+  const lineGap = Math.round(cellSize * 1.3);
+  const textBlockHeight = lineHeight * 3 + lineGap * 2;
+  const textTop = frameTop + (frameHeight - textBlockHeight) / 2;
+  const bricks = [];
+  const createBrickId = createIdFactory(1);
+  const lines = [
+    { word: "FIND", color: FIND_YOUR_GRIND_LOGO_COLORS.blue, top: textTop },
+    { word: "YOUR", color: FIND_YOUR_GRIND_LOGO_COLORS.red, top: textTop + lineHeight + lineGap },
+    { word: "GRIND", color: FIND_YOUR_GRIND_LOGO_COLORS.orange, top: textTop + (lineHeight + lineGap) * 2 },
+  ];
+
+  addLogoBorderBricks(bricks, createBrickId, {
+    left: frameLeft,
+    top: frameTop,
+    width: frameWidth,
+    height: frameHeight,
+    cellSize,
+    cellGap,
+  });
+
+  for (const line of lines) {
+    const wordColumnCount = getWordColumnCount(line.word);
+    const markColumnCount =
+      line.word === "GRIND" ? getBitmapColumnCount(FIND_YOUR_GRIND_HOUSE_MARK) : 0;
+    const totalColumnCount =
+      line.word === "GRIND"
+        ? wordColumnCount + FIND_YOUR_GRIND_LETTER_GAP_COLUMNS + markColumnCount
+        : wordColumnCount;
+    const wordWidth = getColumnSpanWidth(totalColumnCount, cellSize, cellGap);
+    const wordLeft = frameLeft + (frameWidth - wordWidth) / 2;
+    addWordBricks(bricks, createBrickId, {
+      word: line.word,
+      left: wordLeft,
+      top: line.top,
+      cellSize,
+      cellGap,
+      color: line.color,
+    });
+
+    if (line.word === "GRIND") {
+      const markLeft = wordLeft + getColumnSpanWidth(wordColumnCount, cellSize, cellGap) + pitch;
+      const markTop =
+        line.top + lineHeight - getColumnSpanWidth(FIND_YOUR_GRIND_HOUSE_MARK.length, cellSize, cellGap);
+      addBitmapBricks(bricks, createBrickId, {
+        bitmap: FIND_YOUR_GRIND_HOUSE_MARK,
+        left: markLeft,
+        top: markTop,
+        cellSize,
+        cellGap,
+        color: FIND_YOUR_GRIND_LOGO_COLORS.blue,
+        role: "mark",
+      });
+    }
+  }
+
+  return assignBreakoutCapsuleDrops(bricks, rng, Math.max(3, Math.floor(bricks.length / 28)));
 }
 
 function createStuckBall(layout, paddleX, ballId) {
@@ -206,10 +428,8 @@ function createRoundReset(state) {
   };
 }
 
-export function createBreakoutGame(width, height, rng = Math.random) {
-  const layout = createBreakoutLayout(width, height);
+function createBreakoutState(layout, bricks, variant = "classic") {
   const paddleX = layout.width / 2;
-  const bricks = createBreakoutBricks(layout, rng);
   const state = {
     layout,
     paddle: {
@@ -226,11 +446,26 @@ export function createBreakoutGame(width, height, rng = Math.random) {
     message: "3",
   };
   breakoutLog.info("Created breakout game state", {
+    variant,
     width: layout.width,
     height: layout.height,
     brickCount: bricks.length,
   });
   return state;
+}
+
+export function createBreakoutGame(width, height, rng = Math.random) {
+  const layout = createBreakoutLayout(width, height);
+  return createBreakoutState(layout, createBreakoutBricks(layout, rng));
+}
+
+export function createFindYourGrindBreakoutGame(width, height, rng = Math.random) {
+  const layout = createBreakoutLayout(width, height);
+  return createBreakoutState(
+    layout,
+    createFindYourGrindBreakoutBricks(layout, rng),
+    FIND_YOUR_GRIND_BREAKOUT_MODE_ID,
+  );
 }
 
 export function stepBreakoutGame(state, dtSeconds, paddleTargetX, rng = Math.random) {

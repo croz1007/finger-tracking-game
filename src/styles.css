@@ -1105,6 +1105,13 @@ body {
   position: absolute;
 }
 
+.fullscreen-camera-breakout.find-your-grind .fullscreen-camera-breakout-brick {
+  border: 1px solid rgba(4, 13, 32, 0.9);
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(42, 94, 255, 0.22);
+  box-sizing: border-box;
+}
+
 .fullscreen-camera-breakout-paddle {
   background: rgba(255, 255, 255, 0.98);
   border: 4px solid #111;
@@ -3224,82 +3231,632 @@ body {
 
 .fullscreen-camera-mode-landing {
   inset: 0;
+  overflow: hidden;
+  pointer-events: none;
   position: absolute;
+  z-index: 5;
+}
+
+.fullscreen-camera-mode-landing::before {
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.48)),
+    rgba(0, 0, 0, 0.45);
+  content: "";
+  inset: 0;
+  position: absolute;
+  z-index: 0;
+}
+
+.fullscreen-camera-landing-back,
+.fullscreen-camera-landing-status,
+.fullscreen-camera-landing-helper {
+  align-items: center;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  background: rgba(10, 15, 25, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  box-shadow:
+    0 16px 36px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: #f8fbff;
+  display: inline-flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.fullscreen-camera-landing-header {
+  align-items: center;
+  color: #f8fbff;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  left: 50%;
+  pointer-events: none;
+  position: absolute;
+  text-align: center;
+  top: 22px;
+  transform: translateX(-50%);
+  width: min(720px, calc(100% - 48px));
+  z-index: 3;
+}
+
+.fullscreen-camera-landing-title-row {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+.fullscreen-camera-landing-header h1 {
+  font-size: clamp(1.55rem, 3.1vw, 2.65rem);
+  line-height: 1;
+  margin: 0;
+}
+
+.fullscreen-camera-landing-header p {
+  color: rgba(226, 236, 249, 0.84);
+  font-size: clamp(0.86rem, 1.35vw, 1.08rem);
+  margin: 6px 0 0;
+}
+
+.fullscreen-camera-landing-hand-mark {
+  border: 2px solid #22d3ee;
+  border-radius: 18px 18px 22px 22px;
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.42);
+  display: inline-block;
+  height: 42px;
+  position: relative;
+  width: 34px;
+}
+
+.fullscreen-camera-landing-hand-mark::before,
+.fullscreen-camera-landing-hand-mark::after {
+  background: #22d3ee;
+  border-radius: 999px;
+  content: "";
+  position: absolute;
+}
+
+.fullscreen-camera-landing-hand-mark::before {
+  height: 26px;
+  left: 8px;
+  top: -16px;
+  width: 5px;
+}
+
+.fullscreen-camera-landing-hand-mark::after {
+  box-shadow:
+    8px -8px 0 #22d3ee,
+    16px -5px 0 #22d3ee;
+  height: 22px;
+  left: 15px;
+  top: -12px;
+  width: 5px;
+}
+
+.fullscreen-camera-landing-instruction {
+  align-items: center;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  background: rgba(5, 18, 28, 0.62);
+  border: 1px solid rgba(34, 211, 238, 0.85);
+  border-radius: 999px;
+  box-shadow:
+    0 0 18px rgba(34, 211, 238, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: #67e8f9;
+  display: inline-flex;
+  font-size: clamp(0.78rem, 1.2vw, 0.98rem);
+  font-weight: 800;
+  gap: 10px;
+  padding: 8px 18px;
+}
+
+.fullscreen-camera-landing-clock {
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  height: 18px;
+  position: relative;
+  width: 18px;
+}
+
+.fullscreen-camera-landing-clock::before,
+.fullscreen-camera-landing-clock::after {
+  background: currentColor;
+  border-radius: 999px;
+  content: "";
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform-origin: left center;
+}
+
+.fullscreen-camera-landing-clock::before {
+  height: 2px;
+  transform: translateY(-50%) rotate(0deg);
+  width: 6px;
+}
+
+.fullscreen-camera-landing-clock::after {
+  height: 2px;
+  transform: translateY(-50%) rotate(-90deg);
+  width: 5px;
+}
+
+.fullscreen-camera-landing-panel {
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  background: rgba(10, 15, 25, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 24px;
+  box-shadow:
+    0 22px 58px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: #f8fbff;
+  overflow: hidden;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1;
+}
+
+.fullscreen-camera-landing-skeleton {
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  position: absolute;
+  z-index: 6;
+}
+
+.fullscreen-camera-landing-skeleton-bone {
+  stroke: rgba(148, 220, 255, 0.72);
+  stroke-linecap: round;
+  stroke-width: 1.6;
+  vector-effect: non-scaling-stroke;
+}
+
+.fullscreen-camera-landing-skeleton-joint {
+  fill: rgba(226, 241, 255, 0.9);
+  stroke: rgba(8, 13, 22, 0.7);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.fullscreen-camera-landing-skeleton-index-tip {
+  fill: #22d3ee;
+  filter: drop-shadow(0 0 7px rgba(34, 211, 238, 0.95));
+  stroke: rgba(255, 255, 255, 0.95);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.fullscreen-camera-landing-panel h2 {
+  align-items: center;
+  display: flex;
+  font-size: clamp(0.8rem, 1.4vw, 1.12rem);
+  gap: 12px;
+  left: var(--panel-padding, 24px);
+  line-height: 1;
+  margin: 0;
+  position: absolute;
+  top: var(--panel-padding, 24px);
+}
+
+.fullscreen-camera-landing-section-icon {
+  color: #22d3ee;
+  display: inline-block;
+  height: 18px;
+  position: relative;
+  width: 22px;
+}
+
+.fullscreen-camera-landing-section-icon.eye::before {
+  border: 2px solid currentColor;
+  border-radius: 999px 999px 999px 999px / 75% 75% 75% 75%;
+  content: "";
+  inset: 2px 0;
+  position: absolute;
+}
+
+.fullscreen-camera-landing-section-icon.eye::after {
+  background: currentColor;
+  border-radius: 999px;
+  content: "";
+  height: 6px;
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+}
+
+.fullscreen-camera-landing-section-icon.gamepad::before {
+  border: 2px solid currentColor;
+  border-radius: 8px;
+  content: "";
+  inset: 4px 0 2px;
+  position: absolute;
+}
+
+.fullscreen-camera-landing-section-icon.gamepad::after {
+  background: currentColor;
+  box-shadow:
+    11px 0 0 currentColor,
+    15px -3px 0 currentColor,
+    15px 3px 0 currentColor;
+  content: "";
+  height: 3px;
+  left: 5px;
+  position: absolute;
+  top: 10px;
+  width: 7px;
 }
 
 .fullscreen-camera-mode-landing-box {
   align-items: center;
-  background:
-    linear-gradient(180deg, rgba(20, 28, 38, 0.9), rgba(10, 16, 24, 0.96)),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.06), transparent 52%);
-  border: 2px solid rgba(181, 207, 235, 0.2);
-  border-radius: 34px;
-  box-shadow: 0 22px 42px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: rgba(8, 13, 22, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  box-shadow:
+    0 16px 34px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
   color: #f4f8ff;
   display: flex;
   flex-direction: column;
+  gap: clamp(3px, calc(7px * var(--landing-scale, 1)), 8px);
+  isolation: isolate;
   justify-content: center;
+  min-width: 0;
   overflow: hidden;
-  padding: 10px 8px;
+  padding: clamp(5px, calc(8px * var(--landing-scale, 1)), 10px);
   cursor: pointer;
   pointer-events: auto;
   position: absolute;
   text-align: center;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+  z-index: 2;
 }
 
-.fullscreen-camera-mode-landing-box.visual {
-  border-color: rgba(255, 209, 150, 0.22);
+.fullscreen-camera-mode-landing-box::before,
+.fullscreen-camera-landing-back::before {
+  background: linear-gradient(90deg, rgba(14, 165, 233, 0.58), rgba(34, 211, 238, 0.38));
+  content: "";
+  height: 100%;
+  left: 0;
+  mix-blend-mode: screen;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  transition:
+    opacity 120ms ease,
+    width 60ms linear;
+  width: calc(var(--hold-progress, 0) * 100%);
+  z-index: 3;
 }
 
-.fullscreen-camera-mode-landing-box.game {
-  border-color: rgba(153, 221, 244, 0.24);
+.fullscreen-camera-mode-landing-box::after,
+.fullscreen-camera-landing-back::after {
+  background: linear-gradient(90deg, #22d3ee, #60a5fa);
+  bottom: 0;
+  box-shadow: 0 0 16px rgba(34, 211, 238, 0.72);
+  content: "";
+  height: 4px;
+  left: 0;
+  opacity: 0;
+  position: absolute;
+  transition:
+    opacity 120ms ease,
+    width 60ms linear;
+  width: calc(var(--hold-progress, 0) * 100%);
+  z-index: 4;
 }
 
-.fullscreen-camera-mode-landing-box.navigation {
-  border-color: rgba(175, 235, 195, 0.3);
-}
-
-.fullscreen-camera-mode-landing-box.active {
-  background:
-    linear-gradient(180deg, rgba(154, 52, 25, 0.92), rgba(72, 24, 16, 0.97)),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 48%);
-  border-color: rgba(255, 224, 186, 0.34);
+.fullscreen-camera-mode-landing-box.active,
+.fullscreen-camera-landing-back.active,
+.fullscreen-camera-mode-landing-box:focus-visible,
+.fullscreen-camera-landing-back:focus-visible {
+  background: rgba(12, 44, 72, 0.9);
+  border-color: #22d3ee;
+  outline: none;
   box-shadow:
-    0 0 0 6px rgba(255, 126, 97, 0.14),
-    0 24px 44px rgba(0, 0, 0, 0.32);
+    0 0 0 1px rgba(34, 211, 238, 0.72),
+    0 0 28px rgba(34, 211, 238, 0.28),
+    0 22px 42px rgba(0, 0, 0, 0.36);
+  transform: scale(1.03);
 }
 
-.fullscreen-camera-mode-landing-category {
-  color: rgba(213, 228, 247, 0.78);
-  font-size: clamp(0.56rem, 1vw, 0.84rem);
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+.fullscreen-camera-mode-landing-box.active::before,
+.fullscreen-camera-landing-back.active::before,
+.fullscreen-camera-mode-landing-box:focus-visible::before,
+.fullscreen-camera-landing-back:focus-visible::before {
+  opacity: 1;
+}
+
+.fullscreen-camera-mode-landing-box.active::after,
+.fullscreen-camera-landing-back.active::after,
+.fullscreen-camera-mode-landing-box:focus-visible::after,
+.fullscreen-camera-landing-back:focus-visible::after {
+  opacity: 1;
+}
+
+.fullscreen-camera-mode-landing-box > *,
+.fullscreen-camera-landing-back > * {
+  position: relative;
+  z-index: 2;
+}
+
+.fullscreen-camera-landing-fingertip-marker {
+  background: #22d3ee;
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 7px rgba(34, 211, 238, 0.2),
+    0 0 26px rgba(34, 211, 238, 0.76);
+  height: 16px;
+  pointer-events: none;
+  position: fixed;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  z-index: 7;
 }
 
 .fullscreen-camera-mode-landing-title {
-  font-size: clamp(0.72rem, 1.7vw, 1.28rem);
+  display: -webkit-box;
+  font-size: clamp(0.75rem, calc(1.125rem * var(--landing-scale, 1)), 1.2rem);
   font-weight: 900;
-  letter-spacing: 0.04em;
   line-height: 1.08;
-  margin-top: 6px;
-  max-width: 11ch;
+  max-height: 2.18em;
+  max-width: 100%;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
-.fullscreen-camera-mode-landing-countdown {
-  font-size: clamp(1.05rem, 2.8vw, 3rem);
+.fullscreen-camera-mode-preview {
+  color: var(--preview-accent, #22d3ee);
+  display: block;
+  flex: 0 0 auto;
+  height: clamp(35px, calc(48px * var(--landing-scale, 1)), 58px);
+  max-width: 100%;
+  position: relative;
+  width: clamp(48px, calc(88px * var(--landing-scale, 1)), 98px);
+}
+
+.fullscreen-camera-mode-preview-image {
+  display: block;
+  filter: drop-shadow(0 0 12px rgba(34, 211, 238, 0.34));
+  flex: 0 0 auto;
+  height: clamp(45px, calc(58px * var(--landing-scale, 1)), 70px);
+  image-rendering: pixelated;
+  max-width: 100%;
+  object-fit: contain;
+  position: relative;
+  width: clamp(45px, calc(58px * var(--landing-scale, 1)), 70px);
+}
+
+.fullscreen-camera-mode-preview::before,
+.fullscreen-camera-mode-preview::after {
+  content: "";
+  position: absolute;
+}
+
+.fullscreen-camera-mode-preview.squares {
+  background-image: radial-gradient(circle, currentColor 0 32%, transparent 36%);
+  background-size: 13px 13px;
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+.fullscreen-camera-mode-preview.hex::before {
+  background:
+    linear-gradient(30deg, transparent 24%, currentColor 25% 74%, transparent 75%),
+    linear-gradient(150deg, transparent 24%, currentColor 25% 74%, transparent 75%),
+    linear-gradient(90deg, transparent 28%, currentColor 29% 70%, transparent 71%);
+  inset: 4px 5px;
+  opacity: 0.9;
+}
+
+.fullscreen-camera-mode-preview.voronoi {
+  background:
+    radial-gradient(circle at 22% 38%, currentColor 0 6%, transparent 7%),
+    radial-gradient(circle at 44% 18%, currentColor 0 5%, transparent 6%),
+    radial-gradient(circle at 66% 42%, currentColor 0 7%, transparent 8%),
+    radial-gradient(circle at 72% 72%, currentColor 0 5%, transparent 6%),
+    linear-gradient(28deg, transparent 47%, currentColor 48% 50%, transparent 51%),
+    linear-gradient(115deg, transparent 47%, currentColor 48% 50%, transparent 51%);
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+.fullscreen-camera-mode-preview.rings,
+.fullscreen-camera-mode-preview.pulse,
+.fullscreen-camera-mode-preview.ripples,
+.fullscreen-camera-mode-preview.slice-air {
+  background:
+    radial-gradient(circle, currentColor 0 12%, transparent 14% 23%, currentColor 24% 27%, transparent 28% 43%, currentColor 44% 47%, transparent 49%),
+    radial-gradient(circle, transparent 0 64%, currentColor 66% 68%, transparent 70%);
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+.fullscreen-camera-mode-preview.pulse {
+  color: #fb4e7a;
+}
+
+.fullscreen-camera-mode-preview.ripples {
+  color: #1d9bf0;
+}
+
+.fullscreen-camera-mode-preview.static {
+  background-image:
+    radial-gradient(circle at 15% 20%, currentColor 0 3%, transparent 4%),
+    radial-gradient(circle at 26% 72%, currentColor 0 4%, transparent 5%),
+    radial-gradient(circle at 50% 42%, currentColor 0 6%, transparent 7%),
+    radial-gradient(circle at 72% 20%, currentColor 0 2%, transparent 3%),
+    radial-gradient(circle at 84% 70%, currentColor 0 4%, transparent 5%);
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.6));
+}
+
+.fullscreen-camera-mode-preview.hand-bounce,
+.fullscreen-camera-mode-preview.sky-patrol,
+.fullscreen-camera-mode-preview.fingerprint-worlds,
+.fullscreen-camera-mode-preview.missile-command {
+  background-image: radial-gradient(circle, currentColor 0 22%, transparent 24%);
+  background-size: 15px 15px;
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+.fullscreen-camera-mode-preview.brick-dodger,
+.fullscreen-camera-mode-preview.breakout,
+.fullscreen-camera-mode-preview.breakout-coop {
+  background:
+    linear-gradient(currentColor 0 0) 8% 26% / 84% 5px no-repeat,
+    linear-gradient(currentColor 0 0) 20% 46% / 62% 5px no-repeat,
+    linear-gradient(currentColor 0 0) 8% 66% / 84% 5px no-repeat;
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+.fullscreen-camera-mode-preview.finger-pong {
+  background:
+    radial-gradient(circle at 24% 18%, currentColor 0 5%, transparent 6%),
+    radial-gradient(circle at 54% 46%, currentColor 0 6%, transparent 7%),
+    linear-gradient(currentColor 0 0) 12% 40% / 6px 58% no-repeat,
+    linear-gradient(currentColor 0 0) 82% 20% / 6px 58% no-repeat;
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+.fullscreen-camera-mode-preview.tic-tac-toe {
+  background:
+    linear-gradient(90deg, transparent 31%, currentColor 32% 35%, transparent 36% 64%, currentColor 65% 68%, transparent 69%),
+    linear-gradient(0deg, transparent 31%, currentColor 32% 35%, transparent 36% 64%, currentColor 65% 68%, transparent 69%);
+}
+
+.fullscreen-camera-mode-preview.invaders {
+  background:
+    radial-gradient(circle at 50% 16%, currentColor 0 7%, transparent 8%),
+    radial-gradient(circle at 32% 42%, currentColor 0 8%, transparent 9%),
+    radial-gradient(circle at 68% 42%, currentColor 0 8%, transparent 9%),
+    radial-gradient(circle at 20% 70%, currentColor 0 6%, transparent 7%),
+    radial-gradient(circle at 50% 76%, currentColor 0 8%, transparent 9%),
+    radial-gradient(circle at 80% 70%, currentColor 0 6%, transparent 7%);
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+.fullscreen-camera-mode-preview.flappy::before {
+  border-color: transparent transparent currentColor;
+  border-style: solid;
+  border-width: 0 10px 36px;
+  left: 50%;
+  top: 4px;
+  transform: translateX(-50%);
+}
+
+.fullscreen-camera-mode-preview.flappy::after {
+  background-image: radial-gradient(circle, currentColor 0 22%, transparent 24%);
+  background-size: 13px 13px;
+  inset: 4px 12px;
+}
+
+.fullscreen-camera-landing-back {
+  background: rgba(12, 18, 29, 0.72);
+  cursor: pointer;
+  font-size: clamp(0.9rem, 1.25vw, 1.05rem);
   font-weight: 900;
-  letter-spacing: 0.04em;
-  line-height: 1;
-  margin-top: 8px;
+  isolation: isolate;
+  overflow: hidden;
+  pointer-events: auto;
+  position: absolute;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+  z-index: 4;
 }
 
-.fullscreen-camera-mode-landing-hint {
-  color: rgba(232, 239, 249, 0.82);
-  font-size: clamp(0.6rem, 1vw, 0.94rem);
-  line-height: 1.2;
-  margin-top: 6px;
-  max-width: 13ch;
+.fullscreen-camera-landing-back-content {
+  align-items: center;
+  display: inline-flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.fullscreen-camera-landing-footer {
+  align-items: center;
+  bottom: 18px;
+  display: flex;
+  justify-content: space-between;
+  left: 28px;
+  pointer-events: none;
+  position: absolute;
+  right: 28px;
+  z-index: 3;
+}
+
+.fullscreen-camera-landing-status,
+.fullscreen-camera-landing-helper {
+  font-size: clamp(0.78rem, 1.1vw, 0.98rem);
+  min-height: 42px;
+  padding: 0 18px;
+}
+
+.fullscreen-camera-landing-status-dot {
+  background: #4ade80;
+  border-radius: 999px;
+  box-shadow: 0 0 12px rgba(74, 222, 128, 0.78);
+  height: 10px;
+  width: 10px;
+}
+
+.fullscreen-camera-landing-status.warn .fullscreen-camera-landing-status-dot {
+  background: #fbbf24;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.72);
+}
+
+.fullscreen-camera-landing-status-separator {
+  background: rgba(255, 255, 255, 0.28);
+  height: 18px;
+  width: 1px;
+}
+
+.fullscreen-camera-landing-helper strong {
+  color: #22d3ee;
+}
+
+@media (max-width: 760px) {
+  .fullscreen-camera-mode-landing {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .fullscreen-camera-landing-header {
+    top: 16px;
+    width: min(92vw, 520px);
+  }
+
+  .fullscreen-camera-landing-title-row {
+    gap: 8px;
+  }
+
+  .fullscreen-camera-landing-hand-mark {
+    display: none;
+  }
+
+  .fullscreen-camera-landing-footer {
+    bottom: 12px;
+    left: 14px;
+    right: 14px;
+  }
+
+  .fullscreen-camera-landing-helper {
+    display: none;
+  }
 }
 
 .fullscreen-camera-exit-box {

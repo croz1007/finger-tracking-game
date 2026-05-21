@@ -6,6 +6,8 @@ const MISSILE_COMMAND_MAX_STEP_SECONDS = 0.05;
 const MISSILE_COMMAND_SPAWN_DELAY_START_MS = 1_400;
 const MISSILE_COMMAND_SPAWN_DELAY_END_MS = 650;
 const MISSILE_COMMAND_DIFFICULTY_RAMP_MS = 90_000;
+const MISSILE_COMMAND_INTERCEPTOR_MIN_SPEED = 630;
+const MISSILE_COMMAND_INTERCEPTOR_SPEED_RATIO = 1.23;
 export const MISSILE_COMMAND_INTERCEPT_COOLDOWN_MS = 180;
 
 function clamp(value, min, max) {
@@ -33,7 +35,10 @@ export function createMissileCommandLayout(width, height) {
     playTopY: hudTopInset,
     playBottomY: groundY,
     groundY,
-    interceptorSpeed: Math.max(420, safeHeight * 0.82),
+    interceptorSpeed: Math.max(
+      MISSILE_COMMAND_INTERCEPTOR_MIN_SPEED,
+      safeHeight * MISSILE_COMMAND_INTERCEPTOR_SPEED_RATIO,
+    ),
     threatBaseSpeed: Math.max(80, safeHeight * 0.16),
     threatSpeedBonus: Math.max(60, safeHeight * 0.12),
     blastRadius: clamp(Math.min(safeWidth, safeHeight) * 0.09, 42, 96),

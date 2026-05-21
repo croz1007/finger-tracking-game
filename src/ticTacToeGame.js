@@ -11,9 +11,9 @@ export const TIC_TAC_TOE_RESET_HOLD_MS = 1000;
 export const TIC_TAC_TOE_LAYOUT_SCALE = 1.75;
 
 const MAX_STEP_SECONDS = 0.05;
-const PLAYER_PROMPT = "Pinch an X on the left rail and drag it into an open square";
+const PLAYER_PROMPT = "Pinch an X on the X Rail and drag it into an open square";
 const DRAG_PROMPT = "Release over an open square";
-const INVALID_DROP_PROMPT = "Open squares only. Grab another X from the rail";
+const INVALID_DROP_PROMPT = "Open squares only. Grab another X from the X Rail";
 const WIN_LINES = [
   [0, 1, 2],
   [3, 4, 5],
@@ -406,16 +406,17 @@ export function createTicTacToeLayout(width, height) {
   const resolvedBoardMaxWidth = Math.max(minimumPlayableBoardSize, boardMaxWidth);
   const boardMinSize = Math.min(240, resolvedBoardMaxWidth);
   const boardSize = clamp(Math.min(safeHeight * 0.82, resolvedBoardMaxWidth), boardMinSize, 680);
-  const gameWidth = railWidth + railGap + boardSize + railGap + railWidth + railGap + resetBoxWidth;
+  const gameWidth = resetBoxWidth + railGap + railWidth + railGap + boardSize + railGap + railWidth;
   const idealGameLeft = (safeWidth - gameWidth) / 2;
-  // Keep enough of the player rail's pinch ellipse on-screen to remain reachable
-  // while still allowing the whole cluster to shift left on narrow screens.
-  const minGameLeft = -(railWidth * 0.95);
-  const maxGameLeft = safeWidth - edgePadding - (railWidth + railGap + boardSize);
+  // Keep enough of the right-side X Rail's pinch ellipse reachable on narrow
+  // landscape screens while preserving the requested left-to-right order.
+  const minGameLeft = edgePadding;
+  const maxGameLeft = safeWidth - edgePadding - gameWidth + railWidth * 0.35;
   const gameLeft = clamp(idealGameLeft, minGameLeft, Math.max(minGameLeft, maxGameLeft));
-  const boardLeft = gameLeft + railWidth + railGap;
-  const aiRailLeft = boardLeft + boardSize + railGap;
-  const resetBoxLeft = aiRailLeft + railWidth + railGap;
+  const resetBoxLeft = gameLeft;
+  const aiRailLeft = resetBoxLeft + resetBoxWidth + railGap;
+  const boardLeft = aiRailLeft + railWidth + railGap;
+  const playerRailLeft = boardLeft + boardSize + railGap;
   const boardTop = (safeHeight - boardSize) / 2;
   const cellSize = boardSize / 3;
   const activePieceSize = clamp(cellSize * 0.94, 60, 128);
@@ -454,11 +455,11 @@ export function createTicTacToeLayout(width, height) {
     trayCenterY,
     gameLeft,
     gameWidth,
-    playerRailLeft: gameLeft,
+    playerRailLeft,
     playerRailTop: railTop,
     playerRailWidth: railWidth,
     playerRailHeight: railHeight,
-    playerRailCenterX: gameLeft + railWidth / 2,
+    playerRailCenterX: playerRailLeft + railWidth / 2,
     playerRailCenterY: trayCenterY,
     aiRailLeft,
     aiRailTop: railTop,

@@ -1,4 +1,4 @@
-const FULLSCREEN_INDEX_ONLY_TRACKING_MODES = new Set(["tip-ripples", "tip-ripples-v2"]);
+const FULLSCREEN_INDEX_ONLY_TRACKING_MODES = new Set(["tip-ripples"]);
 const FULLSCREEN_ONE_HAND_ONLY_MODES = new Set(["tic-tac-toe"]);
 const FULLSCREEN_HAND_SKELETON_MODES = new Set(["tic-tac-toe"]);
 const FULLSCREEN_NEON_HAND_OUTLINE_MODES = new Set(["sky-patrol"]);

@@ -34,7 +34,9 @@ import {
   BREAKOUT_BRICK_SCORE,
   BREAKOUT_CAPSULE_SCORE,
   BREAKOUT_COUNTDOWN_MS,
+  FIND_YOUR_GRIND_BREAKOUT_MODE_ID,
   createBreakoutGame,
+  createFindYourGrindBreakoutGame,
   stepBreakoutGame,
 } from "./breakoutGame.js";
 import {
@@ -64,13 +66,20 @@ import {
   shouldShowFullscreenHandSkeleton,
   shouldShowFullscreenInvadersBanner,
 } from "./fullscreenGameUi.js";
+import { getFullscreenRingLayersForHand } from "./fullscreenRings.js";
+import {
+  getTipRippleStrokeWidth,
+  getTouchingTipRippleStrokeWidth,
+} from "./tipRipples.js";
 import {
   FULLSCREEN_CAMERA_BACK_TO_INPUT_TEST_ID,
   FULLSCREEN_LANDING_MODE,
   FULLSCREEN_MODE_LANDING_HOLD_MS,
+  createFullscreenLandingHandSkeleton,
   createFullscreenModeLandingState,
   getVerifiedFullscreenMenuHandPointerInput,
   hasVerifiedFullscreenMenuHand,
+  resetFullscreenModeLandingHold,
   selectFullscreenModeLandingMode,
   stepFullscreenModeLanding,
 } from "./fullscreenModeLanding.js";
@@ -195,6 +204,11 @@ import {
   shouldUseContainedCameraFit,
   shouldUseImmersiveAppLayout,
 } from "./cameraLayout.js";
+import {
+  getCameraVideoKeepAliveAction,
+  getStaleInferenceKeepAliveAction,
+  shouldRunTrackingKeepAlive,
+} from "./trackingKeepAlive.js";
 import { detectPose, getLastPoseMeta, getPoseRuntime, initPoseTracking } from "./poseTracking.js";
 import {
   createEmptyOffAxisState,
@@ -207,6 +221,9 @@ import BodyPoseLab from "./components/BodyPoseLab.jsx";
 import OffAxisChamberLab from "./components/OffAxisChamberLab.jsx";
 import RouletteFingerGame from "./components/RouletteFingerGame.jsx";
 import ConveyorSphereGame from "./components/ConveyorSphereGame.jsx";
+import FullscreenLandingPage, {
+  WebcamBackground,
+} from "./components/FullscreenLandingPage.jsx";
 import SpatialGestureMemory from "./components/SpatialGestureMemory.jsx";
 import GestureAnalyticsLab from "./components/GestureAnalyticsLab.jsx";
 import GestureArtLab from "./components/GestureArtLab.jsx";
@@ -264,6 +281,10 @@ const FULLSCREEN_PULSE_RING_DURATION_MS = 1800;
 const FULLSCREEN_PULSE_RING_INTERVAL_MS = 260;
 const FULLSCREEN_RING_STEP_PX = 36;
 const FULLSCREEN_STATIC_RING_STEP_PX = FULLSCREEN_RING_STEP_PX * 2;
+const FULLSCREEN_TIP_RIPPLE_OUTER_DIAMETER_STEP_PX = FULLSCREEN_STATIC_RING_STEP_PX * 2;
+const FULLSCREEN_TIP_RIPPLE_TOUCHING_STROKE_WIDTH_PX = getTouchingTipRippleStrokeWidth(
+  FULLSCREEN_TIP_RIPPLE_OUTER_DIAMETER_STEP_PX,
+);
 const FULLSCREEN_RING_LAYERS = [
   { diameter: 44, color: "#ff0000" },
   { diameter: 80, color: "#ff8d00" },
@@ -460,7 +481,8 @@ const CALIBRATION_SAMPLE_FRAMES = 10;
 const ARC_CALIBRATION_READY_CONFIDENCE = 0.86;
 const ARC_CALIBRATION_MAX_CAPTURE_FRAMES = 2400;
 const INVALID_LANDMARK_RECOVERY_THRESHOLD = 45;
-const NO_HAND_RECOVERY_THRESHOLD = 300;
+const NO_HAND_KEEP_ALIVE_NOTICE_THRESHOLD = 300;
+const NO_HAND_KEEP_ALIVE_LOG_INTERVAL = 1800;
 const HAND_DETECTION_GRACE_MS = 1600;
 const INITIAL_TRACKING_RUNTIME = "mediapipe";
 const FINGERTIP_OVERLAY_STYLES = {
@@ -1434,7 +1456,7 @@ export default function App() {
     width: window.innerWidth,
     height: window.innerHeight,
   }));
-  const [phase, setPhase] = useState(PHASES.CALIBRATION);
+  const [phase, setPhase] = useState(PHASES.FULLSCREEN_CAMERA);
   const [leftPaneWidth, setLeftPaneWidth] = useState(null);
   const [isLeftPaneResizing, setIsLeftPaneResizing] = useState(false);
 
@@ -1497,6 +1519,7 @@ export default function App() {
   const [fullscreenRingTrailNow, setFullscreenRingTrailNow] = useState(() => performance.now());
   const [fullscreenPulseBursts, setFullscreenPulseBursts] = useState([]);
   const [fullscreenPulseNow, setFullscreenPulseNow] = useState(() => performance.now());
+  const [fullscreenTipRippleNow, setFullscreenTipRippleNow] = useState(() => performance.now());
   const [fullscreenHandBounceState, setFullscreenHandBounceState] = useState(null);
   const [fullscreenBrickDodgerState, setFullscreenBrickDodgerState] = useState(null);
   const [fullscreenBreakoutState, setFullscreenBreakoutState] = useState(null);
@@ -1586,6 +1609,10 @@ export default function App() {
   const attachedVideoElementRef = useRef(null);
   const rafRef = useRef(0);
   const inferenceBusyRef = useRef(false);
+  const activeInferenceTokenRef = useRef(0);
+  const lastInferenceStartedAtRef = useRef(0);
+  const lastInferenceCompletedAtRef = useRef(0);
+  const lastTrackingKeepAliveAtRef = useRef(0);
   const mountedRef = useRef(true);
 
   const phaseRef = useRef(phase);
@@ -1601,10 +1628,13 @@ export default function App() {
   const fullscreenRingTrailLastSampleAtRef = useRef(0);
   const fullscreenPulseBurstsRef = useRef([]);
   const fullscreenPulseLastEmitByIdRef = useRef({});
+  const fullscreenTipRippleStartedAtRef = useRef(0);
   const fullscreenGridModeRef = useRef(fullscreenGridMode);
   const fullscreenModeLandingStateRef = useRef(null);
   const fullscreenModeLandingViewportRef = useRef(null);
   const fullscreenModeLandingLastTickRef = useRef(0);
+  const fullscreenModeLandingScrollTopRef = useRef(0);
+  const fullscreenLandingAppActiveRef = useRef(true);
   const fullscreenExitControlStateRef = useRef(null);
   const fullscreenExitControlViewportRef = useRef(null);
   const fullscreenExitControlLastTickRef = useRef(0);
@@ -1685,6 +1715,7 @@ export default function App() {
   const noHandStreakRef = useRef(0);
   const trackingExtentsRef = useRef(createTrackingExtentState());
   const detectorRecoveryAttemptsRef = useRef(0);
+  const lastDetectorRecoveryAtRef = useRef(0);
   const recoveringDetectorRef = useRef(false);
 
   const calibrationTargetsRef = useRef(calibrationTargets);
@@ -1763,6 +1794,9 @@ export default function App() {
   const isImmersiveAppPhase = shouldUseImmersiveAppLayout(phase);
   const isFullscreenModeLanding =
     isFullscreenCameraPhase && fullscreenGridMode === FULLSCREEN_LANDING_MODE;
+  const isFullscreenBreakoutGridMode =
+    fullscreenGridMode === "breakout" ||
+    fullscreenGridMode === FIND_YOUR_GRIND_BREAKOUT_MODE_ID;
   const isFullscreenHandBounceMode =
     isFullscreenCameraPhase &&
     fullscreenGridMode === "hand-bounce" &&
@@ -1772,7 +1806,7 @@ export default function App() {
     fullscreenGridMode === "brick-dodger" &&
     Boolean(fullscreenBrickDodgerState);
   const isFullscreenBreakoutMode =
-    isFullscreenCameraPhase && fullscreenGridMode === "breakout" && Boolean(fullscreenBreakoutState);
+    isFullscreenCameraPhase && isFullscreenBreakoutGridMode && Boolean(fullscreenBreakoutState);
   const isFullscreenBreakoutCoopMode =
     isFullscreenCameraPhase &&
     fullscreenGridMode === "breakout-coop" &&
@@ -1870,12 +1904,12 @@ export default function App() {
     pinchActive,
     draggingCellIndex: fullscreenTicTacToeDraggingCellIndex,
   });
-  const fullscreenModeLandingCountdown = (
-    Math.max(
-      0,
-      FULLSCREEN_MODE_LANDING_HOLD_MS - (fullscreenModeLandingState?.holdMs ?? 0),
-    ) / 1000
-  ).toFixed(2);
+  const fullscreenModeLandingHoldProgress = clampValue(
+    (fullscreenModeLandingState?.holdMs ?? 0) / FULLSCREEN_MODE_LANDING_HOLD_MS,
+    0,
+    1,
+  );
+  const fullscreenModeLandingLayout = fullscreenModeLandingState?.layout ?? null;
   const fullscreenExitControlCountdown = (
     Math.max(
       0,
@@ -2018,7 +2052,7 @@ export default function App() {
     }
   };
 
-  const cameraObjectFit = getCameraObjectFitForPhase(phase);
+  const cameraObjectFit = isFullscreenModeLanding ? "cover" : getCameraObjectFitForPhase(phase);
   const fullscreenCameraViewport = useMemo(() => {
     if (!isFullscreenCameraPhase) {
       return null;
@@ -2030,6 +2064,24 @@ export default function App() {
       Number.isFinite(cameraAspectRatio) && cameraAspectRatio > 0 ? cameraAspectRatio : 4 / 3;
     return createFullscreenCameraViewport(stageWidth, stageHeight, aspectRatio);
   }, [cameraAspectRatio, isFullscreenCameraPhase, viewport.height, viewport.width]);
+  const fullscreenCameraLandingViewport = useMemo(() => {
+    if (!isFullscreenCameraPhase) {
+      return null;
+    }
+
+    return {
+      left: 0,
+      top: 0,
+      width: viewport.width,
+      height: viewport.height,
+      style: {
+        left: "0px",
+        top: "0px",
+        width: `${viewport.width}px`,
+        height: `${viewport.height}px`,
+      },
+    };
+  }, [isFullscreenCameraPhase, viewport.height, viewport.width]);
   const fullscreenTicTacToeCursorPoint =
     isFullscreenTicTacToeMode &&
     fullscreenCameraViewport &&
@@ -2405,6 +2457,108 @@ export default function App() {
     return true;
   }
 
+  function getTrackingTimestamp() {
+    return typeof performance !== "undefined" && typeof performance.now === "function"
+      ? performance.now()
+      : Date.now();
+  }
+
+  function beginTrackingInference(timestamp) {
+    const inferenceToken = activeInferenceTokenRef.current + 1;
+    activeInferenceTokenRef.current = inferenceToken;
+    lastInferenceStartedAtRef.current = timestamp;
+    inferenceBusyRef.current = true;
+    return inferenceToken;
+  }
+
+  function completeTrackingInference(inferenceToken) {
+    lastInferenceCompletedAtRef.current = getTrackingTimestamp();
+    if (activeInferenceTokenRef.current === inferenceToken) {
+      inferenceBusyRef.current = false;
+    }
+  }
+
+  function isCurrentTrackingInference(inferenceToken) {
+    return activeInferenceTokenRef.current === inferenceToken;
+  }
+
+  function releaseStaleTrackingInference(timestamp, staleAction) {
+    const staleToken = activeInferenceTokenRef.current;
+    activeInferenceTokenRef.current += 1;
+    inferenceBusyRef.current = false;
+    inferenceBusySkipCounterRef.current = 0;
+    appLog.warn("Tracking keep-alive detected a stale hand inference; recycling detector", {
+      staleToken,
+      timestamp,
+      inferenceStartedAt: lastInferenceStartedAtRef.current,
+      inferenceAgeMs: roundMetric(staleAction.ageMs, 2),
+      cooldownRemainingMs: roundMetric(staleAction.cooldownRemainingMs, 2),
+      lastInferenceCompletedAt: lastInferenceCompletedAtRef.current,
+    });
+    void recoverDetectorFromInvalidLandmarks("stale_inference_keep_alive", {
+      inferenceAgeMs: staleAction.ageMs,
+      inferenceStartedAt: lastInferenceStartedAtRef.current,
+      lastInferenceCompletedAt: lastInferenceCompletedAtRef.current,
+    });
+  }
+
+  function runTrackingKeepAlive(timestamp, { allowDetectorRecovery = true } = {}) {
+    if (
+      !shouldRunTrackingKeepAlive({
+        now: timestamp,
+        lastRunAt: lastTrackingKeepAliveAtRef.current,
+      })
+    ) {
+      return;
+    }
+    lastTrackingKeepAliveAtRef.current = timestamp;
+
+    const video = videoRef.current;
+    const videoAction = getCameraVideoKeepAliveAction({
+      video,
+      stream: streamRef.current,
+      attachedVideoElement: attachedVideoElementRef.current,
+    });
+
+    if (videoAction.shouldAttach) {
+      appLog.info("Tracking keep-alive refreshing camera playback", videoAction);
+      void attachStreamToVideoElement(video, `keep_alive_${videoAction.reason}`).catch((error) => {
+        appLog.warn("Tracking keep-alive could not refresh camera playback", {
+          videoAction,
+          error,
+        });
+        setCameraError(
+          error instanceof Error
+            ? error.message
+            : "Camera video playback could not be restarted.",
+        );
+      });
+    } else if (videoAction.reason !== "healthy") {
+      appLog.debug("Tracking keep-alive skipped camera refresh", videoAction);
+    }
+
+    if (!allowDetectorRecovery) {
+      return;
+    }
+
+    const staleAction = getStaleInferenceKeepAliveAction({
+      now: timestamp,
+      inferenceBusy: inferenceBusyRef.current,
+      inferenceStartedAt: lastInferenceStartedAtRef.current,
+      recoveryInProgress: recoveringDetectorRef.current,
+      lastRecoveryAt: lastDetectorRecoveryAtRef.current,
+    });
+
+    if (staleAction.shouldRecover) {
+      releaseStaleTrackingInference(timestamp, staleAction);
+    } else if (
+      staleAction.reason !== "idle" &&
+      staleAction.reason !== "within_stale_window"
+    ) {
+      appLog.debug("Tracking keep-alive skipped detector recovery", staleAction);
+    }
+  }
+
   useEffect(() => {
     appLog.info("App mounted", {
       initialViewport: viewportRef.current,
@@ -2414,6 +2568,50 @@ export default function App() {
       appLog.info("App unmounted");
     };
   }, [appLog]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") {
+      return undefined;
+    }
+
+    const markLandingAppActive = () => {
+      fullscreenLandingAppActiveRef.current = document.visibilityState !== "hidden";
+      fullscreenModeLandingLastTickRef.current = 0;
+    };
+
+    const clearLandingHold = () => {
+      fullscreenLandingAppActiveRef.current = false;
+      fullscreenModeLandingLastTickRef.current = 0;
+      setFullscreenModeLandingState((previous) => {
+        const sourceState = previous ?? fullscreenModeLandingStateRef.current;
+        if (!sourceState) {
+          fullscreenModeLandingStateRef.current = null;
+          return previous;
+        }
+        const nextState = resetFullscreenModeLandingHold(sourceState);
+        fullscreenModeLandingStateRef.current = nextState;
+        return nextState;
+      });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        clearLandingHold();
+        return;
+      }
+      markLandingAppActive();
+    };
+
+    window.addEventListener("blur", clearLandingHold);
+    window.addEventListener("focus", markLandingAppActive);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("blur", clearLandingHold);
+      window.removeEventListener("focus", markLandingAppActive);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   useEffect(() => {
     appLog.info("Phase changed", { phase });
@@ -2550,8 +2748,8 @@ export default function App() {
   }, [fullscreenRestartControlState]);
 
   useEffect(() => {
-    fullscreenModeLandingViewportRef.current = fullscreenCameraViewport;
-  }, [fullscreenCameraViewport]);
+    fullscreenModeLandingViewportRef.current = fullscreenCameraLandingViewport;
+  }, [fullscreenCameraLandingViewport]);
 
   useEffect(() => {
     fullscreenExitControlViewportRef.current = fullscreenCameraViewport;
@@ -2680,9 +2878,10 @@ export default function App() {
     if (
       phase !== PHASES.FULLSCREEN_CAMERA ||
       fullscreenGridMode !== FULLSCREEN_LANDING_MODE ||
-      !fullscreenCameraViewport
+      !fullscreenCameraLandingViewport
     ) {
       fullscreenModeLandingLastTickRef.current = 0;
+      fullscreenModeLandingScrollTopRef.current = 0;
       if (fullscreenModeLandingStateRef.current) {
         fullscreenModeLandingStateRef.current = null;
         setFullscreenModeLandingState(null);
@@ -2691,14 +2890,15 @@ export default function App() {
     }
 
     const nextLandingState = createFullscreenModeLandingState(
-      fullscreenCameraViewport.width,
-      fullscreenCameraViewport.height,
+      fullscreenCameraLandingViewport.width,
+      fullscreenCameraLandingViewport.height,
     );
     fullscreenModeLandingLastTickRef.current = 0;
+    fullscreenModeLandingScrollTopRef.current = 0;
     fullscreenModeLandingStateRef.current = nextLandingState;
     setFullscreenModeLandingState(nextLandingState);
     return undefined;
-  }, [fullscreenCameraViewport, fullscreenGridMode, phase]);
+  }, [fullscreenCameraLandingViewport, fullscreenGridMode, phase]);
 
   useEffect(() => {
     if (
@@ -2799,7 +2999,8 @@ export default function App() {
   useEffect(() => {
     if (
       phase !== PHASES.FULLSCREEN_CAMERA ||
-      fullscreenGridMode !== "breakout" ||
+      (fullscreenGridMode !== "breakout" &&
+        fullscreenGridMode !== FIND_YOUR_GRIND_BREAKOUT_MODE_ID) ||
       !fullscreenCameraViewport
     ) {
       fullscreenBreakoutLastTickRef.current = 0;
@@ -2810,10 +3011,16 @@ export default function App() {
       return undefined;
     }
 
-    const nextGame = createBreakoutGame(
-      fullscreenCameraViewport.width,
-      fullscreenCameraViewport.height,
-    );
+    const nextGame =
+      fullscreenGridMode === FIND_YOUR_GRIND_BREAKOUT_MODE_ID
+        ? createFindYourGrindBreakoutGame(
+            fullscreenCameraViewport.width,
+            fullscreenCameraViewport.height,
+          )
+        : createBreakoutGame(
+            fullscreenCameraViewport.width,
+            fullscreenCameraViewport.height,
+          );
     fullscreenBreakoutLastTickRef.current = 0;
     fullscreenBreakoutStateRef.current = nextGame;
     setFullscreenBreakoutState(nextGame);
@@ -3184,6 +3391,7 @@ export default function App() {
       .filter((point) => Number.isFinite(point?.x) && Number.isFinite(point?.y))
       .map((point) => ({
         id: point.id,
+        label: point.label,
         x: point.x,
         y: point.y,
       }));
@@ -3326,6 +3534,30 @@ export default function App() {
       }
     };
   }, [fullscreenGridMode, fullscreenPulseBursts.length]);
+
+  useEffect(() => {
+    if (fullscreenGridMode !== "tip-ripples") {
+      fullscreenTipRippleStartedAtRef.current = 0;
+      return undefined;
+    }
+
+    let frameId = 0;
+    const startTime = performance.now();
+    fullscreenTipRippleStartedAtRef.current = startTime;
+    setFullscreenTipRippleNow(startTime);
+
+    const tick = () => {
+      setFullscreenTipRippleNow(performance.now());
+      frameId = window.requestAnimationFrame(tick);
+    };
+
+    frameId = window.requestAnimationFrame(tick);
+    return () => {
+      if (frameId) {
+        window.cancelAnimationFrame(frameId);
+      }
+    };
+  }, [fullscreenGridMode]);
 
   useEffect(() => {
     appLog.debug("Viewport changed", viewport);
@@ -4310,6 +4542,7 @@ export default function App() {
 
     recoveringDetectorRef.current = true;
     detectorRecoveryAttemptsRef.current += 1;
+    lastDetectorRecoveryAtRef.current = getTrackingTimestamp();
     const attempt = detectorRecoveryAttemptsRef.current;
     const requestedConfig = getRecoveryConfig(attempt, reason);
     logTrackingExtentsSnapshot(`pre_recovery_${reason}`);
@@ -4340,6 +4573,7 @@ export default function App() {
           (requestedConfig.runtime === "mediapipe" ? "n/a" : "unknown"),
       );
       setActiveRuntime(getCurrentRuntime() || requestedConfig.runtime);
+      setModelError("");
       appLog.info("Detector recovery succeeded", {
         attempt,
         activeRuntime: getCurrentRuntime(),
@@ -6610,7 +6844,13 @@ export default function App() {
     }
   }
 
-  function computeCameraRenderMetrics(objectFit = getCameraObjectFitForPhase(phaseRef.current)) {
+  function computeCameraRenderMetrics(
+    objectFit =
+      phaseRef.current === PHASES.FULLSCREEN_CAMERA &&
+      fullscreenGridModeRef.current === FULLSCREEN_LANDING_MODE
+        ? "cover"
+        : getCameraObjectFitForPhase(phaseRef.current),
+  ) {
     const video = videoRef.current;
     const canvas = overlayCanvasRef.current;
     if (!video || !canvas || !video.videoWidth || !video.videoHeight || !canvas.width || !canvas.height) {
@@ -6975,7 +7215,7 @@ export default function App() {
     if (!options.showSkeleton) {
       return;
     }
-    const renderMetrics = computeCameraRenderMetrics();
+    const renderMetrics = computeCameraRenderMetrics(options.objectFit);
 
     const safeHands = Array.isArray(hands) ? hands : [];
     for (let handIndex = 0; handIndex < safeHands.length; handIndex += 1) {
@@ -6988,6 +7228,45 @@ export default function App() {
       const pointerTip = fingerTips.index ?? hand.indexTip ?? null;
 
       if (Array.isArray(hand.landmarks) && hand.landmarks.length > 0) {
+        ctx.strokeStyle = style.line;
+        ctx.lineWidth = options.boneLineWidth ?? 1.45;
+        for (const [startIndex, endIndex] of HAND_ROOT_CONNECTIONS) {
+          const projectedStart = projectCameraPointToCanvas(
+            hand.landmarks[startIndex],
+            renderMetrics,
+          );
+          const projectedEnd = projectCameraPointToCanvas(
+            hand.landmarks[endIndex],
+            renderMetrics,
+          );
+          if (!projectedStart || !projectedEnd) {
+            continue;
+          }
+          ctx.beginPath();
+          ctx.moveTo(projectedStart.x, projectedStart.y);
+          ctx.lineTo(projectedEnd.x, projectedEnd.y);
+          ctx.stroke();
+        }
+        for (const chain of HAND_FINGER_CHAINS) {
+          for (let index = 1; index < chain.length; index += 1) {
+            const projectedStart = projectCameraPointToCanvas(
+              hand.landmarks[chain[index - 1]],
+              renderMetrics,
+            );
+            const projectedEnd = projectCameraPointToCanvas(
+              hand.landmarks[chain[index]],
+              renderMetrics,
+            );
+            if (!projectedStart || !projectedEnd) {
+              continue;
+            }
+            ctx.beginPath();
+            ctx.moveTo(projectedStart.x, projectedStart.y);
+            ctx.lineTo(projectedEnd.x, projectedEnd.y);
+            ctx.stroke();
+          }
+        }
+
         ctx.fillStyle = style.point;
         for (const point of hand.landmarks) {
           const projectedPoint = projectCameraPointToCanvas(point, renderMetrics);
@@ -7000,21 +7279,25 @@ export default function App() {
         }
       }
 
-      for (const fingerName of EXTENT_FINGER_NAMES) {
+      const highlightedFingerNames = options.highlightIndexOnly ? ["index"] : EXTENT_FINGER_NAMES;
+      for (const fingerName of highlightedFingerNames) {
         const tip = fingerTips[fingerName];
         const projectedTip = projectCameraPointToCanvas(tip, renderMetrics);
         if (!projectedTip) {
           continue;
         }
         const { x, y } = projectedTip;
-        ctx.fillStyle = style.point;
+        ctx.fillStyle =
+          options.highlightIndexOnly && fingerName === "index"
+            ? (options.indexHighlightFill ?? "#22d3ee")
+            : style.point;
         ctx.beginPath();
         ctx.arc(x, y, fingerName === "thumb" ? 6 : 5, 0, Math.PI * 2);
         ctx.fill();
       }
 
       const projectedPointerTip = projectCameraPointToCanvas(pointerTip, renderMetrics);
-      if (projectedPointerTip) {
+      if (projectedPointerTip && options.showPointerRing !== false) {
         const pointerX = projectedPointerTip.x;
         const pointerY = projectedPointerTip.y;
         ctx.strokeStyle = style.ring;
@@ -7029,13 +7312,15 @@ export default function App() {
         ctx.stroke();
       }
 
-      ctx.fillStyle = "#f5f9ff";
-      ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, monospace";
-      ctx.fillText(
-        `${hand.label ?? `Hand ${handIndex + 1}`}`,
-        18,
-        24 + handIndex * 16,
-      );
+      if (options.showHandLabels !== false) {
+        ctx.fillStyle = "#f5f9ff";
+        ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, monospace";
+        ctx.fillText(
+          `${hand.label ?? `Hand ${handIndex + 1}`}`,
+          18,
+          24 + handIndex * 16,
+        );
+      }
     }
 
     if (debugRef.current) {
@@ -7429,6 +7714,13 @@ export default function App() {
     const tipPoints = getFullscreenTipOverlayPoints(hands);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    if (fullscreenGridModeRef.current === FULLSCREEN_LANDING_MODE) {
+      return {
+        indexPoints,
+        tipPoints,
+      };
+    }
+
     if (shouldShowFullscreenNeonHandOutline(fullscreenGridModeRef.current)) {
       drawNeonActiveHandOutline(hands);
       return {
@@ -7442,6 +7734,7 @@ export default function App() {
       fullscreenGridModeRef.current === "brick-dodger" ||
       fullscreenGridModeRef.current === "breakout-coop" ||
       fullscreenGridModeRef.current === "breakout" ||
+      fullscreenGridModeRef.current === FIND_YOUR_GRIND_BREAKOUT_MODE_ID ||
       fullscreenGridModeRef.current === "fruit-ninja" ||
       fullscreenGridModeRef.current === "sky-patrol" ||
       fullscreenGridModeRef.current === "invaders" ||
@@ -7456,8 +7749,13 @@ export default function App() {
     }
 
     if (shouldShowFullscreenHandSkeleton(fullscreenGridModeRef.current)) {
+      const isFullscreenLandingSkeleton = fullscreenGridModeRef.current === FULLSCREEN_LANDING_MODE;
       drawCameraOverlayHands(hands, {
         showSkeleton: true,
+        objectFit: isFullscreenLandingSkeleton ? "cover" : undefined,
+        highlightIndexOnly: isFullscreenLandingSkeleton,
+        showPointerRing: !isFullscreenLandingSkeleton,
+        showHandLabels: !isFullscreenLandingSkeleton,
       });
       return {
         indexPoints,
@@ -7494,8 +7792,19 @@ export default function App() {
   }
 
   function getVerifiedFullscreenHoldControlInput(viewportMetrics) {
-    const renderMetrics = computeCameraRenderMetrics("contain");
+    const renderMetrics = computeCameraRenderMetrics(
+      fullscreenGridModeRef.current === FULLSCREEN_LANDING_MODE ? "cover" : "contain",
+    );
     return getVerifiedFullscreenMenuHandPointerInput(
+      fullscreenHandsRef.current,
+      viewportMetrics,
+      (point) => projectCameraPointToCanvas(point, renderMetrics),
+    );
+  }
+
+  function getFullscreenLandingHandSkeleton(viewportMetrics) {
+    const renderMetrics = computeCameraRenderMetrics("cover");
+    return createFullscreenLandingHandSkeleton(
       fullscreenHandsRef.current,
       viewportMetrics,
       (point) => projectCameraPointToCanvas(point, renderMetrics),
@@ -7522,23 +7831,42 @@ export default function App() {
     const deltaSeconds = Math.min(0.05, Math.max(0, (timestamp - previousTimestamp) / 1000));
     fullscreenModeLandingLastTickRef.current = timestamp;
     const holdInput = getVerifiedFullscreenHoldControlInput(viewportMetrics);
-    const pointerActive = handDetectedRef.current && holdInput.pointerActive;
+    const appActive =
+      fullscreenLandingAppActiveRef.current &&
+      (typeof document === "undefined" || document.visibilityState !== "hidden");
+    const pointerActive = appActive && handDetectedRef.current && holdInput.pointerActive;
+    const scrollTop = Math.max(
+      0,
+      Number.isFinite(fullscreenModeLandingScrollTopRef.current)
+        ? fullscreenModeLandingScrollTopRef.current
+        : 0,
+    );
     const nextState = stepFullscreenModeLanding(fullscreenModeLandingStateRef.current, deltaSeconds, {
+      appActive,
       handVerified: holdInput.handVerified,
       pointerActive,
       pointerX: pointerActive ? holdInput.pointerX : 0,
       pointerY: pointerActive ? holdInput.pointerY : 0,
+      hitPointerX: pointerActive ? holdInput.pointerX : 0,
+      hitPointerY: pointerActive ? holdInput.pointerY + scrollTop : 0,
     });
-    fullscreenModeLandingStateRef.current = nextState;
-    setFullscreenModeLandingState(nextState);
+    const nextStateWithSkeleton = {
+      ...nextState,
+      skeleton: getFullscreenLandingHandSkeleton(viewportMetrics),
+    };
+    fullscreenModeLandingStateRef.current = nextStateWithSkeleton;
+    setFullscreenModeLandingState(nextStateWithSkeleton);
 
-    if (nextState.selectedModeId === FULLSCREEN_CAMERA_BACK_TO_INPUT_TEST_ID) {
+    if (nextStateWithSkeleton.selectedModeId === FULLSCREEN_CAMERA_BACK_TO_INPUT_TEST_ID) {
       returnFromFullscreenCameraScreen();
       return;
     }
 
-    if (nextState.selectedModeId && nextState.selectedModeId !== fullscreenGridModeRef.current) {
-      setFullscreenGridMode(nextState.selectedModeId);
+    if (
+      nextStateWithSkeleton.selectedModeId &&
+      nextStateWithSkeleton.selectedModeId !== fullscreenGridModeRef.current
+    ) {
+      setFullscreenGridMode(nextStateWithSkeleton.selectedModeId);
     }
   }
 
@@ -7557,6 +7885,13 @@ export default function App() {
     if (nextState.selectedModeId && nextState.selectedModeId !== fullscreenGridModeRef.current) {
       setFullscreenGridMode(nextState.selectedModeId);
     }
+  }
+
+  function handleFullscreenModeLandingScrollOffsetChange(scrollTop) {
+    fullscreenModeLandingScrollTopRef.current = Math.max(
+      0,
+      Number.isFinite(scrollTop) ? scrollTop : 0,
+    );
   }
 
   function updateFullscreenExitControlSimulation(timestamp) {
@@ -7674,7 +8009,8 @@ export default function App() {
   function updateFullscreenBreakoutSimulation(timestamp) {
     if (
       phaseRef.current !== PHASES.FULLSCREEN_CAMERA ||
-      fullscreenGridModeRef.current !== "breakout" ||
+      (fullscreenGridModeRef.current !== "breakout" &&
+        fullscreenGridModeRef.current !== FIND_YOUR_GRIND_BREAKOUT_MODE_ID) ||
       !fullscreenBreakoutStateRef.current
     ) {
       fullscreenBreakoutLastTickRef.current = timestamp;
@@ -9242,7 +9578,11 @@ export default function App() {
 
       rafRef.current = requestAnimationFrame(frameLoop);
 
-      if (phaseRef.current === PHASES.BODY_POSE || phaseRef.current === PHASES.OFF_AXIS_LAB) {
+      const poseOnlyFrame =
+        phaseRef.current === PHASES.BODY_POSE || phaseRef.current === PHASES.OFF_AXIS_LAB;
+      runTrackingKeepAlive(timestamp, { allowDetectorRecovery: !poseOnlyFrame });
+
+      if (poseOnlyFrame) {
         const video = videoRef.current;
         const poseDetector = poseDetectorRef.current;
         const handDetector = detectorRef.current;
@@ -9267,10 +9607,17 @@ export default function App() {
           return;
         }
 
-        inferenceBusyRef.current = true;
+        const inferenceToken = beginTrackingInference(timestamp);
         try {
           const pose = await detectPose(poseDetector, video);
           const detectedHands = handDetector ? await detectHands(handDetector, video) : [];
+          if (!isCurrentTrackingInference(inferenceToken)) {
+            appLog.warn("Ignoring stale pose-scene inference result after keep-alive recovery", {
+              inferenceToken,
+              activeInferenceToken: activeInferenceTokenRef.current,
+            });
+            return;
+          }
           const stableHands = assignStableHandLabels(detectedHands, {
             memory: handLabelMemoryRef.current,
             timestamp,
@@ -9282,7 +9629,7 @@ export default function App() {
         } catch (error) {
           appLog.error("Pose frame inference failed", { error });
         } finally {
-          inferenceBusyRef.current = false;
+          completeTrackingInference(inferenceToken);
         }
         return;
       }
@@ -9340,13 +9687,20 @@ export default function App() {
         return;
       }
 
-      inferenceBusyRef.current = true;
+      const inferenceToken = beginTrackingInference(timestamp);
       try {
         const detectedHands = await detectHands(detector, video);
         const minorityReportPose =
           phaseRef.current === PHASES.MINORITY_REPORT_LAB && poseDetectorRef.current
             ? await detectPose(poseDetectorRef.current, video)
             : null;
+        if (!isCurrentTrackingInference(inferenceToken)) {
+          appLog.warn("Ignoring stale hand inference result after keep-alive recovery", {
+            inferenceToken,
+            activeInferenceToken: activeInferenceTokenRef.current,
+          });
+          return;
+        }
         const detectionMeta = getLastDetectionMeta();
 
         if (detectionMeta.invalid) {
@@ -9386,12 +9740,15 @@ export default function App() {
 
         if (detectionMeta.reason === "no_hands" && !withinHandGraceWindow) {
           noHandStreakRef.current += 1;
-          if (noHandStreakRef.current === NO_HAND_RECOVERY_THRESHOLD) {
-            appLog.warn("No hands detected for extended period; attempting recovery", {
+          if (
+            noHandStreakRef.current === NO_HAND_KEEP_ALIVE_NOTICE_THRESHOLD ||
+            noHandStreakRef.current % NO_HAND_KEEP_ALIVE_LOG_INTERVAL === 0
+          ) {
+            appLog.info("No hands detected; tracking keep-alive is continuing detection", {
               noHandStreak: noHandStreakRef.current,
               detectionMeta,
+              millisSinceLastValidHand,
             });
-            void recoverDetectorFromInvalidLandmarks("continuous_no_hands", detectionMeta);
           }
         } else if (noHandStreakRef.current > 0) {
           appLog.info("No-hand streak ended", {
@@ -9448,7 +9805,7 @@ export default function App() {
         updateFullscreenOverlayGames(timestamp);
         updateGame(timestamp);
       } finally {
-        inferenceBusyRef.current = false;
+        completeTrackingInference(inferenceToken);
       }
     };
 
@@ -9480,19 +9837,17 @@ export default function App() {
           opacity,
         }}
       >
-        {FULLSCREEN_RING_LAYERS.slice()
-          .reverse()
-          .map((layer) => (
-            <div
-              key={`${keyPrefix}-${point.id}-${layer.color}`}
-              className="fullscreen-camera-ring-layer"
-              style={{
-                width: `${layer.diameter}px`,
-                height: `${layer.diameter}px`,
-                backgroundColor: layer.color,
-              }}
-            />
-          ))}
+        {getFullscreenRingLayersForHand(FULLSCREEN_RING_LAYERS, point.label).map((layer) => (
+          <div
+            key={`${keyPrefix}-${point.id}-${layer.color}`}
+            className="fullscreen-camera-ring-layer"
+            style={{
+              width: `${layer.diameter}px`,
+              height: `${layer.diameter}px`,
+              backgroundColor: layer.color,
+            }}
+          />
+        ))}
       </div>
     );
   }
@@ -9623,74 +9978,7 @@ export default function App() {
     );
   }
 
-  function renderFullscreenTipRippleSet(point, keyPrefix) {
-    if (!fullscreenCameraViewport || !Number.isFinite(point?.x) || !Number.isFinite(point?.y)) {
-      return null;
-    }
-
-    const localX = point.x - fullscreenCameraViewport.left;
-    const localY = point.y - fullscreenCameraViewport.top;
-    const viewportRadius = Math.max(
-      Math.hypot(localX, localY),
-      Math.hypot(fullscreenCameraViewport.width - localX, localY),
-      Math.hypot(localX, fullscreenCameraViewport.height - localY),
-      Math.hypot(
-        fullscreenCameraViewport.width - localX,
-        fullscreenCameraViewport.height - localY,
-      ),
-    );
-    const maxDiameter = viewportRadius * 2;
-    const startDiameter =
-      (FULLSCREEN_RING_LAYERS[0]?.diameter ?? 0) + FULLSCREEN_STATIC_RING_STEP_PX;
-    const diameters = [];
-    const clipPath = getStaticRippleClipPath(
-      point,
-      fullscreenTipPoints,
-      fullscreenCameraViewport,
-    );
-    for (
-      let diameter = startDiameter;
-      diameter <= maxDiameter + FULLSCREEN_STATIC_RING_STEP_PX;
-      diameter += FULLSCREEN_STATIC_RING_STEP_PX
-    ) {
-      diameters.push(diameter);
-    }
-
-    return (
-      <div
-        key={`${keyPrefix}-${point.id}`}
-        className="fullscreen-camera-static-ripple-field"
-        style={{
-          clipPath,
-        }}
-      >
-        {diameters.map((diameter, index) => {
-          if (index % 2 === 0) {
-            return null;
-          }
-          const color =
-            FULLSCREEN_TIP_RIPPLE_COLORS[
-              Math.floor(index / 2) % FULLSCREEN_TIP_RIPPLE_COLORS.length
-            ];
-          return (
-            <div
-              key={`${keyPrefix}-${point.id}-${diameter}`}
-              className="fullscreen-camera-static-ring"
-              style={{
-                left: `${point.x - fullscreenCameraViewport.left}px`,
-                top: `${point.y - fullscreenCameraViewport.top}px`,
-                width: `${diameter}px`,
-                height: `${diameter}px`,
-                borderColor: color,
-              }}
-            />
-          );
-        })}
-      </div>
-    );
-  }
-
-  function renderFullscreenTipRippleBandSet(point, keyPrefix) {
+  function renderFullscreenTipRippleSet(point, keyPrefix, strokeWidth) {
     if (!fullscreenCameraViewport || !Number.isFinite(point?.x) || !Number.isFinite(point?.y)) {
       return null;
     }
@@ -9716,16 +10004,17 @@ export default function App() {
     const bands = [];
 
     for (
-      let bandIndex = 0, innerDiameter = centerDiameter + FULLSCREEN_STATIC_RING_STEP_PX;
-      innerDiameter < maxDiameter + FULLSCREEN_STATIC_RING_STEP_PX;
-      bandIndex += 1, innerDiameter += FULLSCREEN_STATIC_RING_STEP_PX * 2
+      let bandIndex = 0, outerDiameter = centerDiameter + FULLSCREEN_TIP_RIPPLE_OUTER_DIAMETER_STEP_PX;
+      outerDiameter < maxDiameter + FULLSCREEN_STATIC_RING_STEP_PX;
+      bandIndex += 1, outerDiameter += FULLSCREEN_TIP_RIPPLE_OUTER_DIAMETER_STEP_PX
     ) {
-      const outerDiameter = innerDiameter + FULLSCREEN_STATIC_RING_STEP_PX;
-      const borderWidth = (outerDiameter - innerDiameter) / 2;
+      const borderWidth = Math.min(strokeWidth, outerDiameter / 2);
+      const contentDiameter = Math.max(0, outerDiameter - borderWidth * 2);
       const color =
         FULLSCREEN_TIP_RIPPLE_COLORS[bandIndex % FULLSCREEN_TIP_RIPPLE_COLORS.length];
       bands.push({
-        innerDiameter,
+        contentDiameter,
+        outerDiameter,
         borderWidth,
         color,
       });
@@ -9741,13 +10030,13 @@ export default function App() {
       >
         {bands.map((band) => (
           <div
-            key={`${keyPrefix}-${point.id}-${band.innerDiameter}`}
+            key={`${keyPrefix}-${point.id}-${band.outerDiameter}`}
             className="fullscreen-camera-tip-ripple-band"
             style={{
               left: `${point.x - fullscreenCameraViewport.left}px`,
               top: `${point.y - fullscreenCameraViewport.top}px`,
-              width: `${band.innerDiameter}px`,
-              height: `${band.innerDiameter}px`,
+              width: `${band.contentDiameter}px`,
+              height: `${band.contentDiameter}px`,
               borderWidth: `${band.borderWidth}px`,
               borderColor: band.color,
             }}
@@ -9870,59 +10159,33 @@ export default function App() {
     );
   }
 
+  const fullscreenTipRippleStrokeWidth = getTipRippleStrokeWidth(
+    fullscreenTipRippleNow - fullscreenTipRippleStartedAtRef.current,
+    {
+      thickStrokeWidth: FULLSCREEN_TIP_RIPPLE_TOUCHING_STROKE_WIDTH_PX,
+    },
+  );
+
   if (isFullscreenCameraPhase) {
     return (
       <div className="app fullscreen-camera-app">
         <div className="fullscreen-camera-stage" ref={cameraWrapRef}>
-          <video
-            ref={videoRef}
-            className="camera-video fullscreen-camera-video"
-            style={{ objectFit: cameraObjectFit }}
-            playsInline
-            muted
-            autoPlay
+          <WebcamBackground
+            videoRef={videoRef}
+            overlayCanvasRef={overlayCanvasRef}
+            cameraObjectFit={cameraObjectFit}
           />
-          <canvas ref={overlayCanvasRef} className="camera-overlay" />
           {isFullscreenModeLanding ? (
-            <div
-              className="fullscreen-camera-mode-landing"
-              style={fullscreenCameraViewport?.style ?? undefined}
-            >
-              {fullscreenModeLandingState?.layout?.boxes?.map((box) => (
-                <div
-                  key={box.id}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Open ${box.label}`}
-                  className={`fullscreen-camera-mode-landing-box ${box.category.toLowerCase()} ${
-                    fullscreenModeLandingState?.holdModeId === box.id ? "active" : ""
-                  }`}
-                  onClick={(event) => handleFullscreenModeLandingBoxClick(event, box.id)}
-                  style={{
-                    left: `${box.left}px`,
-                    top: `${box.top}px`,
-                    width: `${box.width}px`,
-                    height: `${box.height}px`,
-                  }}
-                >
-                  <span className="fullscreen-camera-mode-landing-category">{box.category}</span>
-                  <span className="fullscreen-camera-mode-landing-title">{box.label}</span>
-                  <span className="fullscreen-camera-mode-landing-countdown">
-                    {fullscreenModeLandingState?.handVerified &&
-                    fullscreenModeLandingState?.holdModeId === box.id
-                      ? fullscreenModeLandingCountdown
-                      : (FULLSCREEN_MODE_LANDING_HOLD_MS / 1000).toFixed(2)}
-                  </span>
-                  <span className="fullscreen-camera-mode-landing-hint">
-                    {!fullscreenModeLandingState?.handVerified
-                      ? "Show 5 tips"
-                      : fullscreenModeLandingState?.holdModeId === box.id
-                      ? "Keep holding"
-                      : "Hold to open"}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <FullscreenLandingPage
+              viewportStyle={fullscreenCameraLandingViewport?.style}
+              layout={fullscreenModeLandingLayout}
+              state={fullscreenModeLandingState}
+              holdProgress={fullscreenModeLandingHoldProgress}
+              handDetected={handDetected}
+              fps={fps}
+              onSelect={handleFullscreenModeLandingBoxClick}
+              onScrollOffsetChange={handleFullscreenModeLandingScrollOffsetChange}
+            />
           ) : fullscreenGridMode === "hex" ? (
             <div className="fullscreen-camera-hex-grid" style={fullscreenHexGridMetrics?.style ?? undefined}>
               {fullscreenHexGridMetrics?.cells?.map((cell) => (
@@ -10014,22 +10277,14 @@ export default function App() {
               style={fullscreenCameraViewport?.style ?? undefined}
             >
               {fullscreenTipPoints.map((point) =>
-                renderFullscreenTipRippleSet(point, "fullscreen-tip-ripple-rings"),
+                renderFullscreenTipRippleSet(
+                  point,
+                  "fullscreen-tip-ripple-rings",
+                  fullscreenTipRippleStrokeWidth,
+                ),
               )}
               {fullscreenTipPoints.map((point) =>
                 renderFullscreenStaticCenter(point, "fullscreen-tip-ripple-center"),
-              )}
-            </div>
-          ) : fullscreenGridMode === "tip-ripples-v2" ? (
-            <div
-              className="fullscreen-camera-rings"
-              style={fullscreenCameraViewport?.style ?? undefined}
-            >
-              {fullscreenTipPoints.map((point) =>
-                renderFullscreenTipRippleBandSet(point, "fullscreen-tip-ripple-v2-bands"),
-              )}
-              {fullscreenTipPoints.map((point) =>
-                renderFullscreenStaticCenter(point, "fullscreen-tip-ripple-v2-center"),
               )}
             </div>
           ) : fullscreenGridMode === "static" ? (
@@ -10217,9 +10472,14 @@ export default function App() {
                 </div>
               ) : null}
             </div>
-          ) : fullscreenGridMode === "breakout" ? (
+          ) : fullscreenGridMode === "breakout" ||
+            fullscreenGridMode === FIND_YOUR_GRIND_BREAKOUT_MODE_ID ? (
             <div
-              className="fullscreen-camera-breakout"
+              className={`fullscreen-camera-breakout ${
+                fullscreenGridMode === FIND_YOUR_GRIND_BREAKOUT_MODE_ID
+                  ? "find-your-grind"
+                  : ""
+              }`}
               style={fullscreenCameraViewport?.style ?? undefined}
             >
               {fullscreenBreakoutState?.bricks
@@ -10420,7 +10680,7 @@ export default function App() {
                     {TIC_TAC_TOE_PLAYER_MARK}
                   </span>
                 </div>
-                <div className="fullscreen-camera-tic-tac-toe-rail-label">Your Rail</div>
+                <div className="fullscreen-camera-tic-tac-toe-rail-label">X Rail</div>
                 <div className="fullscreen-camera-tic-tac-toe-rail-pips player" aria-hidden="true">
                   {fullscreenTicTacToePlayerReservePips.map((pip) => (
                     <span
@@ -11493,12 +11753,12 @@ export default function App() {
           ) : null}
 
           <div className="fullscreen-camera-hud">
-            <div className="fullscreen-camera-hud-bottom">
-              <span className={`tracking-indicator fullscreen-camera-status ${handDetected ? "ok" : "warn"}`}>
-                {handDetected ? "Hand detected" : "Hand not detected"} | FPS: {fps.toFixed(1)}
-              </span>
-              <div className="fullscreen-camera-meta fullscreen-camera-actions">
-                {!isFullscreenModeLanding ? (
+            {!isFullscreenModeLanding ? (
+              <div className="fullscreen-camera-hud-bottom">
+                <span className={`tracking-indicator fullscreen-camera-status ${handDetected ? "ok" : "warn"}`}>
+                  {handDetected ? "Hand detected" : "Hand not detected"} | FPS: {fps.toFixed(1)}
+                </span>
+                <div className="fullscreen-camera-meta fullscreen-camera-actions">
                   <span className="fullscreen-camera-note">
                     {fullscreenGridMode === "breakout-coop"
                       ? `Breakout Co-op keeps index-finger steering on the paddle, uses support-hand pinch for a ${Math.round(BREAKOUT_COOP_SHIELD_DURATION_MS / 1000)} second shield pulse, and prism bricks split the ball while the shield recharges over about ${Math.round(BREAKOUT_COOP_SHIELD_COOLDOWN_MS / 1000)} seconds.`
@@ -11506,12 +11766,14 @@ export default function App() {
                       ? "Hand Bounce turns your tracked palm into a bounce surface. The ball uses gravity-driven motion, rebounds off the side walls, and you only need to keep your hand under it."
                       : fullscreenGridMode === "brick-dodger"
                       ? "Brick Dodger uses the existing smoothed index-fingertip X position only. Drift across the full webcam overlay to dodge falling hazards, chase adjacent bonus pickups, and stretch the run as the descent speed ramps up."
+                      : fullscreenGridMode === FIND_YOUR_GRIND_BREAKOUT_MODE_ID
+                      ? "Find Your Grind Breakout uses small logo-colored bricks to spell the wordmark inside the blue frame, while the index fingertip steers the paddle like classic Breakout."
                       : fullscreenGridMode === "breakout"
                       ? `Index fingertip steers the paddle left and right. Bricks use the Rings palette, the launch countdown is ${BREAKOUT_COUNTDOWN_MS / 1000} seconds, and each capsule adds one extra ball.`
                       : fullscreenGridMode === "finger-pong"
                       ? `Finger Pong keeps the full webcam visible behind a one-player rally. Your bottom paddle follows smoothed horizontal fingertip motion, the opening countdown is ${FINGER_PONG_COUNTDOWN_MS / 1000} seconds, and off-center contacts steer the return angle while rallies gently speed up.`
                       : fullscreenGridMode === "tic-tac-toe"
-                      ? "Tic Tac Toe locks the fullscreen camera to a single tracked hand, reuses the Minority Report hand-outline overlay, lets you pinch-drag X pieces from the left rail, adds a right-side reset box that clears the board after a 1.00 second index-fingertip hold, and gives O a random opening before switching to optimal play."
+                      ? "Tic Tac Toe locks the fullscreen camera to a single tracked hand, reuses the Minority Report hand-outline overlay, lays out New Board, O Rail, the board, and X Rail from left to right, clears the board after a 1.00 second index-fingertip hold, and gives O a random opening before switching to optimal play."
                       : fullscreenGridMode === "fruit-ninja"
                       ? "Fast index-fingertip swipes become blade trails. Slice bright fruit for combos, avoid dark bombs, and restart after three mistakes."
                       : fullscreenGridMode === "sky-patrol"
@@ -11528,9 +11790,9 @@ export default function App() {
                       ? "Virtual Piano renders a two-octave keyboard (C3–C5) across the bottom of the frame. Lower any fingertip into a key to play it — up to 10 simultaneous notes across both hands. Black keys take priority where they overlap white keys."
                       : "Camera fits the window without cropping. Press `Esc` to close."}
                   </span>
-                ) : null}
+                </div>
               </div>
-            </div>
+            ) : null}
             {(cameraError || modelError) && (
               <div className="fullscreen-camera-errors">
                 {cameraError && <p className="error-text">{cameraError}</p>}

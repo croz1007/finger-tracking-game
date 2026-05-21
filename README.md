@@ -6,10 +6,10 @@ Finger Tracking Game is a webcam-driven hand- and pose-tracking playground built
 
 ### Main app (`/`)
 
-- **Calibration Input Test**: the home screen for camera/model readiness, live overlays, calibration controls, and navigation.
+- **Calibration Input Test**: the hub for camera/model readiness, live overlays, calibration controls, and navigation.
 - **Core modes**: Whack-a-Mole, Pinch Sandbox, Track Runner, Star Flight, Conveyor Toss, Roulette, and Spatial Gesture Memory.
 - **Labs**: Body Pose Lab, Off-Axis Forest Walk, Minority Report Lab, Gesture Analytics Lab, Gesture Art Lab, and Gesture Control OS.
-- **Fullscreen Camera**: a fullscreen webcam playground with a dwell-select landing page. The menu waits until all five fingertips are recognized before using the hover cursor, then a 1.00 second index-fingertip hold launches visual overlays (`Squares`, `Hex`, `Voronoi`, `Rings`, `Pulse`, `Tip Ripples`, `Tip Ripples v2`, `Static`) or webcam-backed games (`Hand Bounce`, `Brick Dodger`, `Breakout Co-op`, `Breakout`, `Finger Pong`, `Tic Tac Toe`, `Slice Air`, `Sky Patrol`, `Invaders`, `Flappy`, `Missile Command`). `Sky Patrol` now renders on a cached canvas playfield for smoother vertical scrolling. Every non-menu fullscreen mode also includes a top-right `Exit` box that returns to the landing menu after the same 1.00 second verified-hand hold.
+- **Fullscreen Camera**: the home screen, a fullscreen webcam playground with a dwell-select landing page. The menu waits until all five fingertips are recognized before using the hover cursor, then a 1.00 second index-fingertip hold launches visual overlays (`Squares`, `Hex`, `Voronoi`, `Rings`, `Pulse`, `Tip Ripples`, `Static`) or webcam-backed games (`Hand Bounce`, `Brick Dodger`, `Breakout Co-op`, `Breakout`, `Find Your Grind`, `Finger Pong`, `Tic Tac Toe`, `Slice Air`, `Sky Patrol`, `Fingerprint Worlds`, `Invaders`, `Flappy`, `Missile Command`). `Tip Ripples` continuously breathes from thin rings to thick ripple bands while the demo is active. `Sky Patrol` now renders on a cached canvas playfield for smoother vertical scrolling. Every non-menu fullscreen mode also includes a top-right `Exit` box that returns to the landing menu after the same 1.00 second verified-hand hold.
 
 ### Secondary page (`/circle-of-fifths.html`)
 
@@ -43,13 +43,13 @@ Then:
 1. Open the local URL printed by Vite. It is usually `http://localhost:5173`, but Vite will pick another port if that one is busy.
 2. Allow camera access when the browser asks.
 3. Wait for the camera stream and tracking model to initialize.
-4. Use the **Calibration Input Test** screen as the hub for the rest of the app.
+4. The app starts on the **Fullscreen Camera** landing screen.
 
-From the hub:
+From the **Calibration Input Test** hub, available from the fullscreen landing menu:
 
 - **Start Calibration** runs the 9-point affine calibration used by pointer-driven modes such as Whack-a-Mole.
 - **Start Lazy Arc Calibration** captures a sweep-based calibration and then launches Track Runner.
-- **Open Fullscreen Camera** opens the fullscreen overlay and mini-game playground.
+- **Open Fullscreen Camera** returns to the fullscreen overlay and mini-game playground.
 - **Open Circle of Fifths Page** opens the separate instrument page at `/circle-of-fifths.html`.
 
 To preview the production build locally:

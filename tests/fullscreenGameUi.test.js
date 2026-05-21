@@ -8,11 +8,10 @@ import {
   shouldShowFullscreenInvadersBanner,
 } from "../src/fullscreenGameUi.js";
 
-test("getFullscreenTrackedFingerNames limits Tip Ripples modes to the index fingertip", () => {
+test("getFullscreenTrackedFingerNames limits Tip Ripples to the index fingertip", () => {
   const fingerNames = ["thumb", "index", "middle", "ring", "pinky"];
 
   assert.deepEqual(getFullscreenTrackedFingerNames("tip-ripples", fingerNames), ["index"]);
-  assert.deepEqual(getFullscreenTrackedFingerNames("tip-ripples-v2", fingerNames), ["index"]);
 });
 
 test("getFullscreenTrackedFingerNames preserves all fingertips for other fullscreen modes", () => {
@@ -27,6 +26,7 @@ test("getFullscreenTrackedHandLimit locks tic tac toe to one hand", () => {
 });
 
 test("shouldShowFullscreenHandSkeleton reuses the Minority Report hand overlay for tic tac toe", () => {
+  assert.equal(shouldShowFullscreenHandSkeleton("landing"), false);
   assert.equal(shouldShowFullscreenHandSkeleton("tic-tac-toe"), true);
   assert.equal(shouldShowFullscreenHandSkeleton("brick-dodger"), false);
 });

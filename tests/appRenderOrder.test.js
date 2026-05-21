@@ -28,3 +28,10 @@ test("fullscreen camera HUD keeps detection status at bottom left without the mo
   assert.ok(statusIndex > bottomRowIndex);
   assert.ok(actionsIndex > statusIndex);
 });
+
+test("App starts in fullscreen camera mode", () => {
+  const source = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+  const phaseInitializer = source.match(/const \[phase, setPhase\] = useState\([^)]+\);/)?.[0];
+
+  assert.equal(phaseInitializer, "const [phase, setPhase] = useState(PHASES.FULLSCREEN_CAMERA);");
+});
